@@ -154,7 +154,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: draft, error: draftError } = await userClient
       .from("email_drafts")
-      .select("gmail_draft_id, gmail_message_id, thread_id")
+      .select("gmail_draft_id, gmail_message_id, thread_id, source_message_id")
       .eq("id", email_draft_id)
       .single()
     if (draftError || !draft) {
@@ -188,7 +188,31 @@ Deno.serve(async (req: Request) => {
     }
 
     let original = null
-    if (draft.thread_id) {
+
+    // Preferred path: the automation recorded exactly which message prompted
+    // this draft. Fetch it directly — reliable regardless of whether the
+    // reply ended up threaded to it (e.g. a manually-forwarded email gets
+    // replied to as a new standalone thread addressed to the real
+    // correspondents, not the forwarder, so it's never in the draft's thread).
+    if (draft.source_message_id) {
+      const msgRes = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${draft.source_message_id}?format=full`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      )
+      if (msgRes.ok) {
+        const msgJson = await msgRes.json()
+        original = {
+          from: getHeader(msgJson.payload, "From"),
+          date: getHeader(msgJson.payload, "Date"),
+          subject: getHeader(msgJson.payload, "Subject"),
+          body: extractBody(msgJson.payload),
+        }
+      }
+    }
+
+    // Fallback for older rows created before source_message_id existed —
+    // best-effort guess via the draft's own thread.
+    if (!original && draft.thread_id) {
       const threadRes = await fetch(
         `https://gmail.googleapis.com/gmail/v1/users/me/threads/${draft.thread_id}?format=full`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
