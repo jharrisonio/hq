@@ -9,6 +9,7 @@ import ApartmentPage from './pages/ApartmentPage'
 import CRMPage from './pages/crm/CRMPage'
 import ContactDetail from './pages/crm/ContactDetail'
 import GmailCallback from './pages/GmailCallback'
+import SettingsPage from './pages/SettingsPage'
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -29,6 +30,7 @@ export default function App() {
             <Route path="/crm" element={<CRMPage />} />
             <Route path="/crm/:contactId" element={<ContactDetail />} />
             <Route path="/auth/gmail-callback" element={<GmailCallback />} />
+            <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         )}

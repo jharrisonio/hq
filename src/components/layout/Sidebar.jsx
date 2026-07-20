@@ -44,6 +44,9 @@ export default function Sidebar({ projects, user, onSignOut }) {
           <NavLink to="/crm" className={navLinkClass}>
             <span className="mr-1.5">👥</span>CRM
           </NavLink>
+          <NavLink to="/settings" className={navLinkClass}>
+            <span className="mr-1.5">⚙️</span>Settings
+          </NavLink>
         </div>
       </div>
 

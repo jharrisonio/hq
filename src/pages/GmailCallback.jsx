@@ -28,7 +28,7 @@ export default function GmailCallback() {
           return
         }
         setStatus('Gmail connected — redirecting…')
-        setTimeout(() => navigate('/todos'), 1200)
+        setTimeout(() => navigate('/settings'), 1200)
       })
       .catch((e) => setStatus(`Failed to connect: ${e.message}`))
   }, [navigate])

@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { useTasks } from '../hooks/useTasks'
 import { useEmailDrafts } from '../hooks/useEmailDrafts'
-import { startGmailConnect } from '../lib/gmailAuth'
 import StatusIcon from '../components/ui/StatusIcon'
 import Button from '../components/ui/Button'
 
@@ -77,12 +76,7 @@ export default function TodosPage() {
 
   return (
     <div className="h-full overflow-y-auto px-8 py-8">
-      <div className="flex items-center justify-between max-w-xl mb-6">
-        <div className="text-[11px] font-medium uppercase tracking-widest text-black">Todos</div>
-        <Button variant="ghost" onClick={startGmailConnect} className="text-[11px]">
-          Connect Gmail for sending
-        </Button>
-      </div>
+      <div className="text-[11px] font-medium uppercase tracking-widest text-black mb-6">Todos</div>
 
       <form onSubmit={submit} className="flex gap-2 mb-6 max-w-xl">
         <input
