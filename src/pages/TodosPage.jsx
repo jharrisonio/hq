@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { useTasks } from '../hooks/useTasks'
 import { useEmailDrafts } from '../hooks/useEmailDrafts'
+import { useTriageRules } from '../hooks/useTriageRules'
 import StatusIcon from '../components/ui/StatusIcon'
 import Button from '../components/ui/Button'
 
@@ -10,9 +11,10 @@ function draftGmailUrl(draft) {
   return `https://mail.google.com/mail/u/0/#all/${draft.thread_id}`
 }
 
-function EmailDraftControls({ draft, onApproveAndSend }) {
+function EmailDraftControls({ draft, onApproveAndSend, onDontFlagAgain }) {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState(null)
+  const [ruleAdded, setRuleAdded] = useState(false)
   const editUrl = draftGmailUrl(draft)
 
   const handleSend = async (e) => {
@@ -26,6 +28,12 @@ function EmailDraftControls({ draft, onApproveAndSend }) {
     } finally {
       setSending(false)
     }
+  }
+
+  const handleDontFlag = async (e) => {
+    e.stopPropagation()
+    await onDontFlagAgain(draft)
+    setRuleAdded(true)
   }
 
   return (
@@ -45,9 +53,19 @@ function EmailDraftControls({ draft, onApproveAndSend }) {
           Sent
         </span>
       ) : (
-        <Button variant="secondary" onClick={handleSend} disabled={sending} className="text-[11px] py-1">
-          {sending ? 'Sending…' : draft.status === 'failed' ? 'Retry send' : 'Approve & Send'}
-        </Button>
+        <>
+          <Button variant="secondary" onClick={handleSend} disabled={sending} className="text-[11px] py-1">
+            {sending ? 'Sending…' : draft.status === 'failed' ? 'Retry send' : 'Approve & Send'}
+          </Button>
+          {draft.to_email &&
+            (ruleAdded ? (
+              <span className="text-[10px] text-gray-400">Won’t flag {draft.to_email} again</span>
+            ) : (
+              <button onClick={handleDontFlag} className="text-[11px] text-gray-400 hover:text-black">
+                Don’t flag like this again
+              </button>
+            ))}
+        </>
       )}
       {error && <span className="text-[10px] text-black">{error}</span>}
       {!error && draft.status === 'failed' && draft.error && (
@@ -61,7 +79,16 @@ export default function TodosPage() {
   const { user } = useOutletContext()
   const { tasks, loading, updateStatus, addTask, deleteTask } = useTasks(user?.id, null)
   const { draftsByTaskId, loading: draftsLoading, approveAndSend } = useEmailDrafts(user?.id)
+  const { addRule } = useTriageRules(user?.id)
   const [title, setTitle] = useState('')
+
+  const dontFlagAgain = (draft) =>
+    addRule({
+      matchType: 'sender',
+      matchValue: draft.to_email,
+      action: 'always_archive',
+      note: draft.subject ? `From a corrected todo: "${draft.subject}"` : 'From a corrected todo',
+    })
 
   const submit = async (e) => {
     e.preventDefault()
@@ -103,7 +130,9 @@ export default function TodosPage() {
               <span className={`flex-1 text-[13px] ${t.status === 'done' ? 'line-through text-gray-300' : ''}`}>
                 {t.title}
               </span>
-              {draft && <EmailDraftControls draft={draft} onApproveAndSend={approveAndSend} />}
+              {draft && (
+                <EmailDraftControls draft={draft} onApproveAndSend={approveAndSend} onDontFlagAgain={dontFlagAgain} />
+              )}
               <button
                 onClick={(e) => {
                   e.stopPropagation()

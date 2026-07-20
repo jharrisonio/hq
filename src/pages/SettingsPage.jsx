@@ -1,11 +1,99 @@
+import { useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { useGmailConnection } from '../hooks/useGmailConnection'
+import { useTriageRules } from '../hooks/useTriageRules'
 import { startGmailConnect } from '../lib/gmailAuth'
 import Button from '../components/ui/Button'
 
 function formatDateTime(iso) {
   if (!iso) return ''
   return new Date(iso).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+const ACTION_LABELS = { always_actionable: 'Always draft a reply', always_archive: 'Always archive' }
+
+function TriageRulesSection({ userId }) {
+  const { rules, loading, addRule, deleteRule } = useTriageRules(userId)
+  const [matchType, setMatchType] = useState('sender')
+  const [matchValue, setMatchValue] = useState('')
+  const [action, setAction] = useState('always_archive')
+  const [note, setNote] = useState('')
+
+  const submit = async (e) => {
+    e.preventDefault()
+    if (!matchValue.trim()) return
+    await addRule({ matchType, matchValue: matchValue.trim(), action, note: note.trim() })
+    setMatchValue('')
+    setNote('')
+  }
+
+  if (loading) return null
+
+  return (
+    <div className="max-w-md border border-gray-100 rounded-sm p-5 flex flex-col gap-4 mt-6">
+      <div>
+        <div className="text-[13px] font-medium">Email triage rules</div>
+        <div className="text-[12px] text-gray-400 mt-0.5">
+          Read by the triage automation before classifying each email — corrections here take effect on its next run.
+        </div>
+      </div>
+
+      <form onSubmit={submit} className="flex flex-col gap-2">
+        <div className="flex gap-2">
+          <select
+            value={matchType}
+            onChange={(e) => setMatchType(e.target.value)}
+            className="text-[12px] border border-gray-200 rounded-sm px-2 py-1.5"
+          >
+            <option value="sender">Sender email</option>
+            <option value="domain">Sender domain</option>
+          </select>
+          <input
+            value={matchValue}
+            onChange={(e) => setMatchValue(e.target.value)}
+            placeholder={matchType === 'sender' ? 'billing@example.com' : 'example.com'}
+            className="flex-1 text-[13px] border border-gray-200 rounded-sm px-3 py-1.5"
+          />
+        </div>
+        <select
+          value={action}
+          onChange={(e) => setAction(e.target.value)}
+          className="text-[12px] border border-gray-200 rounded-sm px-2 py-1.5"
+        >
+          <option value="always_archive">Always archive</option>
+          <option value="always_actionable">Always draft a reply</option>
+        </select>
+        <input
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Note (optional)"
+          className="text-[13px] border border-gray-200 rounded-sm px-3 py-1.5"
+        />
+        <Button type="submit" variant="secondary" className="self-start">
+          Add rule
+        </Button>
+      </form>
+
+      <div className="flex flex-col gap-1.5">
+        {rules.map((r) => (
+          <div key={r.id} className="flex items-center justify-between gap-2 py-1.5 border-t border-gray-100">
+            <div className="text-[12px] min-w-0">
+              <span className="font-medium">{r.match_value}</span>
+              <span className="text-gray-400"> — {ACTION_LABELS[r.action] || r.action}</span>
+              {r.note && <span className="text-gray-400"> ({r.note})</span>}
+            </div>
+            <button
+              onClick={() => deleteRule(r.id)}
+              className="text-gray-300 hover:text-black text-[12px] shrink-0"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+        {rules.length === 0 && <p className="text-[12px] text-gray-300">No rules yet.</p>}
+      </div>
+    </div>
+  )
 }
 
 export default function SettingsPage() {
@@ -54,6 +142,8 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
+
+      <TriageRulesSection userId={user?.id} />
     </div>
   )
 }
