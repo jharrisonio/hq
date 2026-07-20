@@ -45,9 +45,9 @@ export default function DetailPanel({
   const driveEntries = Object.entries(task.driveLinks || {})
 
   return (
-    <div className="w-[360px] border-l border-gray-100 overflow-y-auto shrink-0 bg-white flex flex-col">
+    <div className="w-[360px] border-l border-gray-100 overflow-y-auto overflow-x-hidden shrink-0 bg-white flex flex-col">
       <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-3.5 border-b border-gray-200 sticky top-0 bg-white z-10">
-        <div className="text-[14px] font-medium leading-snug flex-1">{task.title}</div>
+        <div className="text-[14px] font-medium leading-snug flex-1 min-w-0 break-words">{task.title}</div>
         <button onClick={onClose} className="text-gray-300 hover:text-black text-sm leading-none mt-0.5">
           ✕
         </button>
@@ -93,13 +93,13 @@ export default function DetailPanel({
 
       {task.description && (
         <Section label="Description">
-          <div className="text-[12.5px] leading-relaxed text-gray-600">{task.description}</div>
+          <div className="text-[12.5px] leading-relaxed text-gray-600 break-words">{task.description}</div>
         </Section>
       )}
 
       {task.deloitteNote && (
         <Section label="Deloitte's Instructions">
-          <div className="border-l-2 border-black pl-3 text-[12px] leading-relaxed text-gray-500 italic">
+          <div className="border-l-2 border-black pl-3 text-[12px] leading-relaxed text-gray-500 italic break-words">
             {task.deloitteNote}
           </div>
         </Section>
@@ -107,7 +107,7 @@ export default function DetailPanel({
 
       {task.note && (
         <Section label="Notes">
-          <div className="text-[12.5px] leading-relaxed text-gray-600">{task.note}</div>
+          <div className="text-[12.5px] leading-relaxed text-gray-600 break-words">{task.note}</div>
         </Section>
       )}
 

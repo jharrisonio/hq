@@ -78,11 +78,11 @@ function EmailDraftDetail({ draft, onApproveAndSend, onDontFlagAgain }) {
     <div className="flex flex-col gap-4">
       {original && (
         <div>
-          <div className="text-[9px] text-gray-300 font-semibold uppercase tracking-wider mb-1">
+          <div className="text-[9px] text-gray-300 font-semibold uppercase tracking-wider mb-1 break-words">
             Original Email{original.from ? ` — ${original.from}` : ''}
           </div>
           {original.date && <div className="text-[11px] text-gray-400 mb-1.5">{formatEmailDate(original.date)}</div>}
-          <div className="text-[12.5px] leading-relaxed text-gray-600 whitespace-pre-wrap border-l-2 border-gray-100 pl-3">
+          <div className="text-[12.5px] leading-relaxed text-gray-600 whitespace-pre-wrap break-words border-l-2 border-gray-100 pl-3">
             {original.body}
           </div>
         </div>
@@ -92,7 +92,7 @@ function EmailDraftDetail({ draft, onApproveAndSend, onDontFlagAgain }) {
         <div className="text-[9px] text-gray-300 font-semibold uppercase tracking-wider mb-1">Reply Draft</div>
         {displayBody ? (
           <div>
-            <div className="text-[12.5px] leading-relaxed text-gray-600 whitespace-pre-wrap border-l-2 border-gray-100 pl-3">
+            <div className="text-[12.5px] leading-relaxed text-gray-600 whitespace-pre-wrap break-words border-l-2 border-gray-100 pl-3">
               {displayBody}
             </div>
             {liveLoading && liveBody === null && (
