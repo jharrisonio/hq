@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 const DEFAULT_PROJECTS = [
-  { name: 'Canada PR', slug: 'canada-pr', icon: '🍁', color: '#000000', position: 0 },
-  { name: 'Apartment', slug: 'apartment', icon: '🏠', color: '#888888', position: 1 },
+  { name: 'Canada PR', slug: 'canada-pr', position: 0 },
+  { name: 'Apartment', slug: 'apartment', position: 1 },
 ]
 
 export function useProjects(userId) {

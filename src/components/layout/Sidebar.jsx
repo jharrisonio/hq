@@ -30,7 +30,6 @@ export default function Sidebar({ projects, user, onSignOut }) {
         <div className="flex flex-col gap-0.5">
           {projects.map((p) => (
             <NavLink key={p.id} to={PROJECT_ROUTES[p.slug] || `/${p.slug}`} className={navLinkClass}>
-              <span className="mr-1.5">{p.icon}</span>
               {p.name}
             </NavLink>
           ))}
@@ -39,13 +38,13 @@ export default function Sidebar({ projects, user, onSignOut }) {
         <SectionLabel>Personal</SectionLabel>
         <div className="flex flex-col gap-0.5">
           <NavLink to="/todos" className={navLinkClass}>
-            <span className="mr-1.5">✓</span>Todos
+            Todos
           </NavLink>
           <NavLink to="/crm" className={navLinkClass}>
-            <span className="mr-1.5">👥</span>CRM
+            CRM
           </NavLink>
           <NavLink to="/settings" className={navLinkClass}>
-            <span className="mr-1.5">⚙️</span>Settings
+            Settings
           </NavLink>
         </div>
       </div>
