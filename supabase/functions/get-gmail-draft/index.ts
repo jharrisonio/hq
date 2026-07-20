@@ -53,16 +53,69 @@ function findPart(payload: any, mimeType: string): any {
   return null
 }
 
+const HTML_ENTITIES: Record<string, string> = {
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&#39;": "'",
+  "&apos;": "'",
+  "&nbsp;": " ",
+}
+
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&(amp|lt|gt|quot|#39|apos|nbsp);/g, (m) => HTML_ENTITIES[m] || m)
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, code) => String.fromCharCode(parseInt(code, 16)))
+}
+
+// Gmail (web client and API-composed replies alike) wraps quoted history in
+// a `gmail_quote`/`gmail_attr` container — cut there so only the new reply
+// shows, not the whole thread underneath it.
+function trimQuotedHtml(html: string): string {
+  let cutIndex = html.length
+  for (const marker of [/<div[^>]+class="gmail_quote/i, /<div[^>]+class="gmail_attr/i, /<blockquote/i]) {
+    const match = html.match(marker)
+    if (match?.index !== undefined && match.index < cutIndex) cutIndex = match.index
+  }
+  return html.slice(0, cutIndex)
+}
+
+function trimQuotedPlainText(text: string): string {
+  const lines = text.split("\n")
+  const cutoffPatterns = [/^On .+wrote:$/i, /^-{2,}\s*Original Message\s*-{2,}/i, /^From:\s/i, /^>/]
+  for (let i = 0; i < lines.length; i++) {
+    if (cutoffPatterns.some((p) => p.test(lines[i].trim()))) {
+      return lines.slice(0, i).join("\n").trim()
+    }
+  }
+  return text
+}
+
 function stripHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+  let text = html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|li|h[1-6])>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+  text = decodeHtmlEntities(text)
+  text = text
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+  return text.trim()
 }
 
 // deno-lint-ignore no-explicit-any
 function extractBody(payload: any): string {
   const plain = findPart(payload, "text/plain")
-  if (plain?.body?.data) return decodeBase64Url(plain.body.data)
+  if (plain?.body?.data) {
+    return decodeHtmlEntities(trimQuotedPlainText(decodeBase64Url(plain.body.data)))
+  }
   const html = findPart(payload, "text/html")
-  if (html?.body?.data) return stripHtml(decodeBase64Url(html.body.data))
+  if (html?.body?.data) {
+    return stripHtml(trimQuotedHtml(decodeBase64Url(html.body.data)))
+  }
   return ""
 }
 
