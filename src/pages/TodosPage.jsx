@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { useTasks } from '../hooks/useTasks'
 import { useEmailDrafts } from '../hooks/useEmailDrafts'
+import { useEmailSubscriptions } from '../hooks/useEmailSubscriptions'
 import { useTriageRules } from '../hooks/useTriageRules'
 import { supabase } from '../lib/supabase'
 import { extractFunctionError } from '../lib/functionsError'
@@ -154,10 +155,81 @@ function EmailDraftDetail({ draft, onApproveAndSend, onDontFlagAgain }) {
   )
 }
 
+function UnsubscribeDetail({ subscription, onUnsubscribe, onDismiss }) {
+  const [working, setWorking] = useState(false)
+  const [error, setError] = useState(null)
+
+  const handleUnsubscribe = async () => {
+    setWorking(true)
+    setError(null)
+    try {
+      if (subscription.unsubscribe_method !== 'one_click_post' && subscription.unsubscribe_url) {
+        window.open(subscription.unsubscribe_url, '_blank', 'noreferrer')
+      }
+      await onUnsubscribe(subscription.id)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  const handleDismiss = async () => {
+    setWorking(true)
+    setError(null)
+    try {
+      await onDismiss(subscription.id)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="text-[12.5px] leading-relaxed text-gray-600 break-words">
+        {subscription.from_email || subscription.from_domain}
+        {subscription.subject ? ` — ${subscription.subject}` : ''}
+      </div>
+
+      {subscription.status === 'unsubscribed' ? (
+        <span className="text-[10px] font-medium uppercase tracking-wider text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded-sm self-start">
+          Unsubscribed
+        </span>
+      ) : subscription.status === 'dismissed' ? (
+        <span className="text-[10px] font-medium uppercase tracking-wider text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded-sm self-start">
+          Dismissed — kept
+        </span>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={handleUnsubscribe} disabled={working} className="text-[12px]">
+            {working ? 'Working…' : 'Unsubscribe'}
+          </Button>
+          <button onClick={handleDismiss} disabled={working} className="text-[11px] text-gray-400 hover:text-black">
+            Keep — dismiss
+          </button>
+        </div>
+      )}
+
+      {error && <span className="text-[11px] text-black">{error}</span>}
+      {!error && subscription.status === 'failed' && subscription.error && (
+        <span className="text-[11px] text-black">{subscription.error}</span>
+      )}
+    </div>
+  )
+}
+
 export default function TodosPage() {
   const { user } = useOutletContext()
   const { tasks, loading, getTask, updateStatus, updateDueDate, addTask, deleteTask } = useTasks(user?.id, null)
   const { draftsByTaskId, loading: draftsLoading, approveAndSend } = useEmailDrafts(user?.id)
+  const {
+    subscriptionsByTaskId,
+    loading: subscriptionsLoading,
+    unsubscribe,
+    dismiss,
+  } = useEmailSubscriptions(user?.id)
   const { addRule } = useTriageRules(user?.id)
   const [title, setTitle] = useState('')
 
@@ -178,16 +250,29 @@ export default function TodosPage() {
 
   const getExtraSections = (task) => {
     const draft = draftsByTaskId[task.id]
-    if (!draft) return []
-    return [
-      {
-        label: 'Email',
-        content: <EmailDraftDetail draft={draft} onApproveAndSend={approveAndSend} onDontFlagAgain={dontFlagAgain} />,
-      },
-    ]
+    if (draft) {
+      return [
+        {
+          label: 'Email',
+          content: (
+            <EmailDraftDetail draft={draft} onApproveAndSend={approveAndSend} onDontFlagAgain={dontFlagAgain} />
+          ),
+        },
+      ]
+    }
+    const subscription = subscriptionsByTaskId[task.id]
+    if (subscription) {
+      return [
+        {
+          label: 'Unsubscribe',
+          content: <UnsubscribeDetail subscription={subscription} onUnsubscribe={unsubscribe} onDismiss={dismiss} />,
+        },
+      ]
+    }
+    return []
   }
 
-  if (loading || draftsLoading) return null
+  if (loading || draftsLoading || subscriptionsLoading) return null
 
   return (
     <div className="h-full flex flex-col">
