@@ -1,13 +1,9 @@
-// gmail.compose covers drafts.get/drafts.send. Showing the original email a
-// draft replies to needs threads.get on a regular (non-draft) message, which
-// requires gmail.readonly on top — gmail.compose alone doesn't cover reading
-// arbitrary received mail, only draft management. Kept as two scopes rather
-// than jumping to gmail.modify, since we don't need write access to regular
-// messages (labeling/archiving is Cowork's job via its own connector).
-const GMAIL_SCOPES = [
-  "https://www.googleapis.com/auth/gmail.compose",
-  "https://www.googleapis.com/auth/gmail.readonly",
-].join(" ")
+// gmail.modify covers drafts.get/drafts.send (like gmail.compose), reading
+// regular messages/threads (like gmail.readonly), and now messages.modify —
+// needed to archive an approved candidate by removing its INBOX label.
+// It's a superset of the two scopes this used to request, not a separate
+// third one, and still excludes permanent delete.
+const GMAIL_SCOPES = "https://www.googleapis.com/auth/gmail.modify"
 
 export function gmailCallbackRedirectUri() {
   return `${window.location.origin}/auth/gmail-callback`

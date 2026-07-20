@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom'
 import { useTasks } from '../hooks/useTasks'
 import { useEmailDrafts } from '../hooks/useEmailDrafts'
 import { useEmailSubscriptions } from '../hooks/useEmailSubscriptions'
+import { useEmailArchiveCandidates } from '../hooks/useEmailArchiveCandidates'
 import { useTriageRules } from '../hooks/useTriageRules'
 import { supabase } from '../lib/supabase'
 import { extractFunctionError } from '../lib/functionsError'
@@ -220,6 +221,73 @@ function UnsubscribeDetail({ subscription, onUnsubscribe, onDismiss }) {
   )
 }
 
+function ArchiveCandidateDetail({ candidate, onArchive, onIgnore }) {
+  const [working, setWorking] = useState(false)
+  const [error, setError] = useState(null)
+
+  const handleArchive = async () => {
+    setWorking(true)
+    setError(null)
+    try {
+      await onArchive(candidate.id)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  const handleIgnore = async () => {
+    setWorking(true)
+    setError(null)
+    try {
+      await onIgnore(candidate.id)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="text-[12.5px] leading-relaxed text-gray-600 break-words">
+        {candidate.from_email}
+        {candidate.subject ? ` — ${candidate.subject}` : ''}
+      </div>
+      {candidate.snippet && (
+        <div className="text-[12.5px] leading-relaxed text-gray-600 break-words border-l-2 border-gray-100 pl-3">
+          {candidate.snippet}
+        </div>
+      )}
+
+      {candidate.status === 'archived' ? (
+        <span className="text-[10px] font-medium uppercase tracking-wider text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded-sm self-start">
+          Archived
+        </span>
+      ) : candidate.status === 'ignored' ? (
+        <span className="text-[10px] font-medium uppercase tracking-wider text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded-sm self-start">
+          Ignored
+        </span>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={handleArchive} disabled={working} className="text-[12px]">
+            {working ? 'Working…' : 'Archive'}
+          </Button>
+          <button onClick={handleIgnore} disabled={working} className="text-[11px] text-gray-400 hover:text-black">
+            Ignore
+          </button>
+        </div>
+      )}
+
+      {error && <span className="text-[11px] text-black">{error}</span>}
+      {!error && candidate.status === 'failed' && candidate.error && (
+        <span className="text-[11px] text-black">{candidate.error}</span>
+      )}
+    </div>
+  )
+}
+
 export default function TodosPage() {
   const { user } = useOutletContext()
   const { tasks, loading, getTask, updateStatus, updateDueDate, addTask, deleteTask } = useTasks(user?.id, null)
@@ -230,6 +298,12 @@ export default function TodosPage() {
     unsubscribe,
     dismiss,
   } = useEmailSubscriptions(user?.id)
+  const {
+    candidatesByTaskId,
+    loading: candidatesLoading,
+    archive,
+    ignore,
+  } = useEmailArchiveCandidates(user?.id)
   const { addRule } = useTriageRules(user?.id)
   const [title, setTitle] = useState('')
 
@@ -269,10 +343,19 @@ export default function TodosPage() {
         },
       ]
     }
+    const candidate = candidatesByTaskId[task.id]
+    if (candidate) {
+      return [
+        {
+          label: 'Archive Candidate',
+          content: <ArchiveCandidateDetail candidate={candidate} onArchive={archive} onIgnore={ignore} />,
+        },
+      ]
+    }
     return []
   }
 
-  if (loading || draftsLoading || subscriptionsLoading) return null
+  if (loading || draftsLoading || subscriptionsLoading || candidatesLoading) return null
 
   return (
     <div className="h-full flex flex-col">
