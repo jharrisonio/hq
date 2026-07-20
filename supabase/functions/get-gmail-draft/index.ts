@@ -195,8 +195,20 @@ Deno.serve(async (req: Request) => {
       )
       if (threadRes.ok) {
         const threadJson = await threadRes.json()
+        // A draft's underlying message id changes each time it's edited, so
+        // the id we stored at creation time may be stale — exclude by the
+        // DRAFT label instead, which is always current. Also exclude by id
+        // (both stored and current-from-drafts.get) as a belt-and-suspenders
+        // check in case a message is a draft without that label for any reason.
+        const currentDraftMessageId = draftJson.message?.id
+        // deno-lint-ignore no-explicit-any
         const others = (threadJson.messages || [])
-          .filter((m: { id: string }) => m.id !== draft.gmail_message_id)
+          .filter(
+            (m: { id: string; labelIds?: string[] }) =>
+              !m.labelIds?.includes("DRAFT") &&
+              m.id !== draft.gmail_message_id &&
+              m.id !== currentDraftMessageId
+          )
           .sort((a: { internalDate: string }, b: { internalDate: string }) => Number(b.internalDate) - Number(a.internalDate))
         const latest = others[0]
         if (latest) {
