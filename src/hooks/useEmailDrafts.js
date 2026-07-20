@@ -41,5 +41,22 @@ export function useEmailDrafts(userId) {
     await load()
   }
 
-  return { draftsByTaskId, loading, approveAndSend, refresh: load }
+  // Explicit disagreement signal — this email didn't need a reply, distinct
+  // from just leaving the draft pending forever. Feeds triage accuracy
+  // tracking the same way dismiss/ignore do for subscriptions/archive
+  // candidates.
+  const reject = async (draft) => {
+    const { error } = await supabase.from('email_drafts').update({ status: 'rejected' }).eq('id', draft.id)
+    if (error) throw error
+    if (draft.task_id) {
+      const { error: taskError } = await supabase
+        .from('tasks')
+        .update({ status: 'done', updated_at: new Date().toISOString() })
+        .eq('id', draft.task_id)
+      if (taskError) throw taskError
+    }
+    await load()
+  }
+
+  return { draftsByTaskId, loading, approveAndSend, reject, refresh: load }
 }

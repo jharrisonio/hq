@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { useGmailConnection } from '../hooks/useGmailConnection'
 import { useTriageRules } from '../hooks/useTriageRules'
+import { useTriageOutcomes } from '../hooks/useTriageOutcomes'
 import { startGmailConnect } from '../lib/gmailAuth'
 import { useToast } from '../components/ui/Toast'
 import Button from '../components/ui/Button'
@@ -12,6 +13,51 @@ function formatDateTime(iso) {
 }
 
 const ACTION_LABELS = { always_actionable: 'Always draft a reply', always_archive: 'Always archive' }
+
+const SUGGESTED_ACTION_LABELS = { reply: 'Reply', archive: 'Archive', unsubscribe: 'Unsubscribe' }
+const SUGGESTED_ACTION_ORDER = ['reply', 'archive', 'unsubscribe']
+
+function TriageAccuracySection({ userId }) {
+  const { rows, loading } = useTriageOutcomes(userId)
+
+  if (loading) return null
+
+  const byAction = {}
+  rows.forEach((r) => {
+    byAction[r.suggested_action] = byAction[r.suggested_action] || { agreed: 0, disagreed: 0, pending: 0, failed: 0 }
+    byAction[r.suggested_action][r.outcome] = (byAction[r.suggested_action][r.outcome] || 0) + 1
+  })
+
+  return (
+    <div className="max-w-md border border-gray-100 rounded-sm p-5 flex flex-col gap-4 mt-6">
+      <div>
+        <div className="text-[13px] font-medium">Triage accuracy</div>
+        <div className="text-[12px] text-gray-400 mt-0.5">
+          How often the suggested action matched what you actually did, per type.
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        {SUGGESTED_ACTION_ORDER.filter((a) => byAction[a]).map((a) => {
+          const stats = byAction[a]
+          const judged = stats.agreed + stats.disagreed
+          const pct = judged > 0 ? Math.round((stats.agreed / judged) * 100) : null
+          return (
+            <div key={a} className="flex items-center justify-between border-t border-gray-100 pt-3">
+              <span className="text-[13px]">{SUGGESTED_ACTION_LABELS[a]}</span>
+              <span className="text-[12px] text-gray-400">
+                {pct !== null ? `${pct}% agreement` : 'No verdicts yet'}
+                {judged > 0 && ` (${stats.agreed}/${judged})`}
+                {stats.pending > 0 && ` · ${stats.pending} pending`}
+              </span>
+            </div>
+          )
+        })}
+        {rows.length === 0 && <p className="text-[12px] text-gray-300">No triaged emails yet.</p>}
+      </div>
+    </div>
+  )
+}
 
 function ruleScopeLabel(r) {
   if (!r.match_type) return 'All emails'
@@ -177,6 +223,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      <TriageAccuracySection userId={user?.id} />
       <TriageRulesSection userId={user?.id} />
     </div>
   )

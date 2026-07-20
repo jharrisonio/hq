@@ -22,9 +22,10 @@ function formatEmailDate(dateHeader) {
   return Number.isNaN(d.getTime()) ? dateHeader : d.toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-function EmailDraftDetail({ draft, onApproveAndSend, onDontFlagAgain }) {
+function EmailDraftDetail({ draft, onApproveAndSend, onReject, onDontFlagAgain }) {
   const { showSuccess, showError } = useToast()
   const [sending, setSending] = useState(false)
+  const [rejecting, setRejecting] = useState(false)
   const [ruleAdded, setRuleAdded] = useState(false)
   const [liveBody, setLiveBody] = useState(null)
   const [original, setOriginal] = useState(null)
@@ -83,6 +84,18 @@ function EmailDraftDetail({ draft, onApproveAndSend, onDontFlagAgain }) {
     }
   }
 
+  const handleReject = async () => {
+    setRejecting(true)
+    try {
+      await onReject(draft)
+      showSuccess('Marked as not needed')
+    } catch (err) {
+      showError(err.message)
+    } finally {
+      setRejecting(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {original && (
@@ -138,10 +151,23 @@ function EmailDraftDetail({ draft, onApproveAndSend, onDontFlagAgain }) {
         <span className="text-[10px] font-medium uppercase tracking-wider text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded-sm self-start">
           Sent
         </span>
+      ) : draft.status === 'rejected' ? (
+        <span className="text-[10px] font-medium uppercase tracking-wider text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded-sm self-start">
+          Not needed
+        </span>
       ) : (
-        <Button variant="secondary" onClick={handleSend} disabled={sending} className="self-start text-[12px]">
-          {sending ? 'Sending…' : draft.status === 'failed' ? 'Retry send' : 'Approve & Send'}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={handleSend} disabled={sending || rejecting} className="text-[12px]">
+            {sending ? 'Sending…' : draft.status === 'failed' ? 'Retry send' : 'Approve & Send'}
+          </Button>
+          <button
+            onClick={handleReject}
+            disabled={sending || rejecting}
+            className="text-[11px] text-gray-400 hover:text-black"
+          >
+            Not needed
+          </button>
+        </div>
       )}
 
       {draft.status === 'failed' && draft.error && <span className="text-[11px] text-black">{draft.error}</span>}
@@ -301,7 +327,7 @@ export default function TodosPage() {
     deleteTask,
     refresh: refreshTasks,
   } = useTasks(user?.id, null)
-  const { draftsByTaskId, loading: draftsLoading, approveAndSend } = useEmailDrafts(user?.id)
+  const { draftsByTaskId, loading: draftsLoading, approveAndSend, reject } = useEmailDrafts(user?.id)
   const {
     subscriptionsByTaskId,
     loading: subscriptionsLoading,
@@ -318,6 +344,11 @@ export default function TodosPage() {
   // requiring a full page reload.
   const handleApproveAndSend = async (id) => {
     await approveAndSend(id)
+    refreshTasks()
+  }
+
+  const handleReject = async (draft) => {
+    await reject(draft)
     refreshTasks()
   }
 
@@ -367,7 +398,12 @@ export default function TodosPage() {
         {
           label: 'Email',
           content: (
-            <EmailDraftDetail draft={draft} onApproveAndSend={handleApproveAndSend} onDontFlagAgain={dontFlagAgain} />
+            <EmailDraftDetail
+              draft={draft}
+              onApproveAndSend={handleApproveAndSend}
+              onReject={handleReject}
+              onDontFlagAgain={dontFlagAgain}
+            />
           ),
         },
       ]
