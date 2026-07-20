@@ -57,9 +57,11 @@ export default function TaskRow({ task, isChild, isActive, isExpanded, onSelect,
             {dueFmt}
           </span>
         )}
-        <span className="text-[9px] font-medium uppercase tracking-wider text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded-sm">
-          {ASSIGNEE_LABELS[task.assignee] || 'Both'}
-        </span>
+        {task.assignee && (
+          <span className="text-[9px] font-medium uppercase tracking-wider text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded-sm">
+            {ASSIGNEE_LABELS[task.assignee] || task.assignee}
+          </span>
+        )}
       </div>
     </div>
   )

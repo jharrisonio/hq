@@ -26,7 +26,16 @@ function Pills({ tasks, onNavigate }) {
   )
 }
 
-export default function DetailPanel({ task, getTask, onClose, onUpdateStatus, onUpdateDueDate, onNavigate }) {
+export default function DetailPanel({
+  task,
+  getTask,
+  onClose,
+  onUpdateStatus,
+  onUpdateDueDate,
+  onNavigate,
+  onDelete,
+  extraSections = [],
+}) {
   if (!task) return null
 
   const blockedByTasks = (task.blockedBy || []).map(getTask).filter(Boolean)
@@ -61,12 +70,14 @@ export default function DetailPanel({ task, getTask, onClose, onUpdateStatus, on
             ))}
           </select>
         </div>
-        <div className="flex items-center gap-2.5 min-h-[26px]">
-          <span className="text-[9px] font-semibold uppercase tracking-wider text-gray-300 w-[72px] shrink-0">
-            Assignee
-          </span>
-          <span className="text-[13px] text-gray-600">{ASSIGNEE_LABELS[task.assignee] || 'Both'}</span>
-        </div>
+        {task.assignee && (
+          <div className="flex items-center gap-2.5 min-h-[26px]">
+            <span className="text-[9px] font-semibold uppercase tracking-wider text-gray-300 w-[72px] shrink-0">
+              Assignee
+            </span>
+            <span className="text-[13px] text-gray-600">{ASSIGNEE_LABELS[task.assignee] || task.assignee}</span>
+          </div>
+        )}
         <div className="flex items-center gap-2.5 min-h-[26px]">
           <span className="text-[9px] font-semibold uppercase tracking-wider text-gray-300 w-[72px] shrink-0">
             Due Date
@@ -164,6 +175,20 @@ export default function DetailPanel({ task, getTask, onClose, onUpdateStatus, on
         <Section label="Blocks">
           <Pills tasks={blocksTasks} onNavigate={onNavigate} />
         </Section>
+      )}
+
+      {extraSections.map((s, i) => (
+        <Section key={i} label={s.label}>
+          {s.content}
+        </Section>
+      ))}
+
+      {onDelete && (
+        <div className="px-5 py-3.5 border-b border-gray-100">
+          <button onClick={onDelete} className="text-[12px] text-gray-400 hover:text-black">
+            Delete task
+          </button>
+        </div>
       )}
     </div>
   )

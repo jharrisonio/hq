@@ -20,6 +20,12 @@ This app follows a strict minimal, monochrome aesthetic carried over from the or
 
 Canonical components to match when building anything new: `src/components/ui/StatusIcon.jsx`, `TaskRow.jsx`, `DetailPanel.jsx`, `src/components/layout/Sidebar.jsx`.
 
+## Task list + detail panel pattern
+
+Any page that renders a set of tasks (Canada PR, Todos, and future project/task-type pages) should render through `src/components/tasks/TaskListView.jsx` rather than hand-rolling its own list/sidebar. The page owns data fetching (`useTasks`) and its own header chrome (title, countdown, quick-add form); `TaskListView` owns selection state, expand/collapse, and rendering `TaskRow`s + `DetailPanel`.
+
+To add type-specific content to the detail panel (e.g. the email draft controls on Todos) without teaching `DetailPanel` or `TaskListView` about that domain, pass `getExtraSections(task) => [{ label, content }]` — rendered generically as extra `Section`s at the bottom of the panel. Pass `onDeleteTask(id)` if the page should support deleting a task from the panel (Canada PR intentionally doesn't). See `ProjectPage.jsx` for the minimal case and `TodosPage.jsx` for one using both extension points.
+
 ## Architecture conventions
 
 - Schema changes go in `supabase/migrations/` (Supabase CLI format) — never hand-edit the remote DB without a matching migration file committed. Migrations auto-apply via Supabase's GitHub integration on push to `main`; they can also be applied directly through the Supabase MCP connection during a session, but the migration file is still the source of truth and should be committed either way.
