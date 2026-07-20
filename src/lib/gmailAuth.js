@@ -1,7 +1,13 @@
-// gmail.compose covers drafts.get (reading a draft's content) as well as
-// drafts.send — narrower than gmail.readonly/gmail.modify, which would grant
-// access to the whole mailbox instead of just draft management.
-const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.compose"
+// gmail.compose covers drafts.get/drafts.send. Showing the original email a
+// draft replies to needs threads.get on a regular (non-draft) message, which
+// requires gmail.readonly on top — gmail.compose alone doesn't cover reading
+// arbitrary received mail, only draft management. Kept as two scopes rather
+// than jumping to gmail.modify, since we don't need write access to regular
+// messages (labeling/archiving is Cowork's job via its own connector).
+const GMAIL_SCOPES = [
+  "https://www.googleapis.com/auth/gmail.compose",
+  "https://www.googleapis.com/auth/gmail.readonly",
+].join(" ")
 
 export function gmailCallbackRedirectUri() {
   return `${window.location.origin}/auth/gmail-callback`
@@ -12,7 +18,7 @@ export function startGmailConnect() {
     client_id: import.meta.env.VITE_GOOGLE_GMAIL_CLIENT_ID,
     redirect_uri: gmailCallbackRedirectUri(),
     response_type: "code",
-    scope: GMAIL_SCOPE,
+    scope: GMAIL_SCOPES,
     access_type: "offline",
     prompt: "consent",
   })

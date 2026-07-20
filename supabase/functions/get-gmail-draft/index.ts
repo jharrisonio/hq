@@ -53,6 +53,12 @@ function findPart(payload: any, mimeType: string): any {
   return null
 }
 
+// deno-lint-ignore no-explicit-any
+function getHeader(payload: any, name: string): string | null {
+  const header = payload?.headers?.find((h: { name: string; value: string }) => h.name.toLowerCase() === name.toLowerCase())
+  return header?.value ?? null
+}
+
 const HTML_ENTITIES: Record<string, string> = {
   "&amp;": "&",
   "&lt;": "<",
@@ -148,7 +154,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: draft, error: draftError } = await userClient
       .from("email_drafts")
-      .select("gmail_draft_id")
+      .select("gmail_draft_id, gmail_message_id, thread_id")
       .eq("id", email_draft_id)
       .single()
     if (draftError || !draft) {
@@ -181,7 +187,30 @@ Deno.serve(async (req: Request) => {
       return json({ error: draftJson.error?.message || "Failed to fetch draft" }, draftRes.status)
     }
 
-    return json({ body: extractBody(draftJson.message?.payload) })
+    let original = null
+    if (draft.thread_id) {
+      const threadRes = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/threads/${draft.thread_id}?format=full`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      )
+      if (threadRes.ok) {
+        const threadJson = await threadRes.json()
+        const others = (threadJson.messages || [])
+          .filter((m: { id: string }) => m.id !== draft.gmail_message_id)
+          .sort((a: { internalDate: string }, b: { internalDate: string }) => Number(b.internalDate) - Number(a.internalDate))
+        const latest = others[0]
+        if (latest) {
+          original = {
+            from: getHeader(latest.payload, "From"),
+            date: getHeader(latest.payload, "Date"),
+            subject: getHeader(latest.payload, "Subject"),
+            body: extractBody(latest.payload),
+          }
+        }
+      }
+    }
+
+    return json({ body: extractBody(draftJson.message?.payload), original })
   } catch (e) {
     return json({ error: String(e) }, 500)
   }

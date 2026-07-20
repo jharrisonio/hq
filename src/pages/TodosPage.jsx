@@ -12,11 +12,18 @@ function draftGmailUrl(draft) {
   return `https://mail.google.com/mail/u/0/#all/${draft.thread_id}`
 }
 
+function formatEmailDate(dateHeader) {
+  if (!dateHeader) return ''
+  const d = new Date(dateHeader)
+  return Number.isNaN(d.getTime()) ? dateHeader : d.toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' })
+}
+
 function EmailDraftDetail({ draft, onApproveAndSend, onDontFlagAgain }) {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState(null)
   const [ruleAdded, setRuleAdded] = useState(false)
   const [liveBody, setLiveBody] = useState(null)
+  const [original, setOriginal] = useState(null)
   const [liveLoading, setLiveLoading] = useState(true)
   const [liveError, setLiveError] = useState(null)
   const editUrl = draftGmailUrl(draft)
@@ -24,6 +31,7 @@ function EmailDraftDetail({ draft, onApproveAndSend, onDontFlagAgain }) {
   useEffect(() => {
     let cancelled = false
     setLiveBody(null)
+    setOriginal(null)
     setLiveLoading(true)
     setLiveError(null)
     supabase.functions
@@ -31,7 +39,10 @@ function EmailDraftDetail({ draft, onApproveAndSend, onDontFlagAgain }) {
       .then(({ data, error: err }) => {
         if (cancelled) return
         if (err || data?.error) setLiveError(err?.message || data?.error)
-        else setLiveBody(data?.body || '')
+        else {
+          setLiveBody(data?.body || '')
+          setOriginal(data?.original || null)
+        }
       })
       .catch((e) => {
         if (!cancelled) setLiveError(e.message)
@@ -64,29 +75,44 @@ function EmailDraftDetail({ draft, onApproveAndSend, onDontFlagAgain }) {
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      {displayBody ? (
+    <div className="flex flex-col gap-4">
+      {original && (
         <div>
-          <div className="text-[12.5px] leading-relaxed text-gray-600 whitespace-pre-wrap border-l-2 border-gray-100 pl-3">
-            {displayBody}
+          <div className="text-[9px] text-gray-300 font-semibold uppercase tracking-wider mb-1">
+            Original Email{original.from ? ` — ${original.from}` : ''}
           </div>
-          {liveLoading && liveBody === null && (
-            <div className="text-[10px] text-gray-300 mt-1">Refreshing from Gmail…</div>
-          )}
-          {!liveLoading && liveError && liveBody === null && (
-            <div className="text-[10px] text-gray-300 mt-1">
-              Showing last saved version — couldn’t refresh from Gmail ({liveError}).
-            </div>
-          )}
-        </div>
-      ) : liveLoading ? (
-        <div className="text-[12px] text-gray-300">Loading draft…</div>
-      ) : (
-        <div className="text-[12px] text-gray-300">
-          {liveError ? `Couldn’t load the draft (${liveError}).` : 'No draft text available.'} Open in Gmail to view
-          it.
+          {original.date && <div className="text-[11px] text-gray-400 mb-1.5">{formatEmailDate(original.date)}</div>}
+          <div className="text-[12.5px] leading-relaxed text-gray-600 whitespace-pre-wrap border-l-2 border-gray-100 pl-3">
+            {original.body}
+          </div>
         </div>
       )}
+
+      <div>
+        <div className="text-[9px] text-gray-300 font-semibold uppercase tracking-wider mb-1">Reply Draft</div>
+        {displayBody ? (
+          <div>
+            <div className="text-[12.5px] leading-relaxed text-gray-600 whitespace-pre-wrap border-l-2 border-gray-100 pl-3">
+              {displayBody}
+            </div>
+            {liveLoading && liveBody === null && (
+              <div className="text-[10px] text-gray-300 mt-1">Refreshing from Gmail…</div>
+            )}
+            {!liveLoading && liveError && liveBody === null && (
+              <div className="text-[10px] text-gray-300 mt-1">
+                Showing last saved version — couldn’t refresh from Gmail ({liveError}).
+              </div>
+            )}
+          </div>
+        ) : liveLoading ? (
+          <div className="text-[12px] text-gray-300">Loading draft…</div>
+        ) : (
+          <div className="text-[12px] text-gray-300">
+            {liveError ? `Couldn’t load the draft (${liveError}).` : 'No draft text available.'} Open in Gmail to
+            view it.
+          </div>
+        )}
+      </div>
 
       {editUrl && (
         <a
@@ -154,7 +180,7 @@ export default function TodosPage() {
     if (!draft) return []
     return [
       {
-        label: 'Email Draft',
+        label: 'Email',
         content: <EmailDraftDetail draft={draft} onApproveAndSend={approveAndSend} onDontFlagAgain={dontFlagAgain} />,
       },
     ]
