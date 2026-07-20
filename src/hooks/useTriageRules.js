@@ -1,22 +1,31 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useToast } from '../components/ui/Toast'
 
 export function useTriageRules(userId) {
   const [rules, setRules] = useState([])
   const [loading, setLoading] = useState(true)
+  const loadedOnce = useRef(false)
+  const { showError } = useToast()
 
   const load = useCallback(async () => {
     if (!userId) return
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('email_triage_rules')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-    if (error) throw error
-    setRules(data)
-    setLoading(false)
-  }, [userId])
+    if (!loadedOnce.current) setLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('email_triage_rules')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      setRules(data)
+    } catch (e) {
+      showError(e.message)
+    } finally {
+      loadedOnce.current = true
+      setLoading(false)
+    }
+  }, [userId, showError])
 
   useEffect(() => {
     load()

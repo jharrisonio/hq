@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import TaskRow from '../ui/TaskRow'
 import DetailPanel from '../ui/DetailPanel'
+import { useToast } from '../ui/Toast'
 
 function SectionHeader({ children }) {
   return (
@@ -25,6 +26,7 @@ export default function TaskListView({
 }) {
   const [selectedId, setSelectedId] = useState(null)
   const [expanded, setExpanded] = useState(new Set())
+  const { showError } = useToast()
 
   const taskCount = sections.reduce((n, s) => n + s.tasks.length, 0)
 
@@ -45,6 +47,31 @@ export default function TaskListView({
   }
 
   const selectedTask = selectedId ? getTask(selectedId) : null
+
+  const handleUpdateStatus = async (id, status) => {
+    try {
+      await onUpdateStatus(id, status)
+    } catch (e) {
+      showError(e.message)
+    }
+  }
+
+  const handleUpdateDueDate = async (id, dueDate) => {
+    try {
+      await onUpdateDueDate(id, dueDate)
+    } catch (e) {
+      showError(e.message)
+    }
+  }
+
+  const handleDelete = async () => {
+    try {
+      await onDeleteTask(selectedTask.id)
+      setSelectedId(null)
+    } catch (e) {
+      showError(e.message)
+    }
+  }
 
   const renderRow = (t, isChild) => (
     <TaskRow
@@ -89,17 +116,10 @@ export default function TaskListView({
           task={selectedTask}
           getTask={getTask}
           onClose={() => setSelectedId(null)}
-          onUpdateStatus={onUpdateStatus}
-          onUpdateDueDate={onUpdateDueDate}
+          onUpdateStatus={handleUpdateStatus}
+          onUpdateDueDate={handleUpdateDueDate}
           onNavigate={setSelectedId}
-          onDelete={
-            onDeleteTask
-              ? () => {
-                  onDeleteTask(selectedTask.id)
-                  setSelectedId(null)
-                }
-              : undefined
-          }
+          onDelete={onDeleteTask ? handleDelete : undefined}
           extraSections={getExtraSections ? getExtraSections(selectedTask) : []}
         />
       )}

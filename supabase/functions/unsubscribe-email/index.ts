@@ -70,7 +70,11 @@ Deno.serve(async (req: Request) => {
     // For 'link'/'mailto' methods the frontend opens the URL itself — there's
     // no reliable way to confirm the user completed it, so this just records
     // intent once they've clicked through.
+    const now = new Date().toISOString()
     await userClient.from("email_subscriptions").update({ status: "unsubscribed", error: null }).eq("id", email_subscription_id)
+    if (sub.task_id) {
+      await userClient.from("tasks").update({ status: "done", updated_at: now }).eq("id", sub.task_id)
+    }
 
     return json({ success: true })
   } catch (e) {

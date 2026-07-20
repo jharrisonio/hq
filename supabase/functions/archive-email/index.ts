@@ -61,7 +61,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: candidate, error: candidateError } = await userClient
       .from("email_archive_candidates")
-      .select("gmail_message_id")
+      .select("gmail_message_id, task_id")
       .eq("id", email_archive_candidate_id)
       .single()
     if (candidateError || !candidate) {
@@ -114,6 +114,12 @@ Deno.serve(async (req: Request) => {
       .from("email_archive_candidates")
       .update({ status: "archived", error: null })
       .eq("id", email_archive_candidate_id)
+    if (candidate.task_id) {
+      await userClient
+        .from("tasks")
+        .update({ status: "done", updated_at: new Date().toISOString() })
+        .eq("id", candidate.task_id)
+    }
 
     return json({ success: true })
   } catch (e) {

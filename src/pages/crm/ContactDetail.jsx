@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useContacts } from '../../hooks/useContacts'
+import { useToast } from '../../components/ui/Toast'
 import Button from '../../components/ui/Button'
 
 export default function ContactDetail() {
@@ -8,6 +9,7 @@ export default function ContactDetail() {
   const { contactId } = useParams()
   const navigate = useNavigate()
   const { contacts, loading, updateContact, deleteContact } = useContacts(user?.id)
+  const { showSuccess, showError } = useToast()
   const contact = contacts.find((c) => c.id === contactId)
   const [fields, setFields] = useState(null)
 
@@ -18,13 +20,22 @@ export default function ContactDetail() {
 
   const save = async () => {
     if (!fields) return
-    await updateContact(contact.id, fields)
-    setFields(null)
+    try {
+      await updateContact(contact.id, fields)
+      setFields(null)
+      showSuccess('Saved')
+    } catch (err) {
+      showError(err.message)
+    }
   }
 
   const remove = async () => {
-    await deleteContact(contact.id)
-    navigate('/crm')
+    try {
+      await deleteContact(contact.id)
+      navigate('/crm')
+    } catch (err) {
+      showError(err.message)
+    }
   }
 
   return (

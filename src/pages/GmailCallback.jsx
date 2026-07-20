@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { extractFunctionError } from '../lib/functionsError'
+import { useToast } from '../components/ui/Toast'
 
 export default function GmailCallback() {
   const navigate = useNavigate()
+  const { showSuccess, showError } = useToast()
   const [status, setStatus] = useState('Connecting Gmail…')
 
   useEffect(() => {
@@ -13,11 +15,13 @@ export default function GmailCallback() {
     const errorParam = params.get('error')
 
     if (errorParam) {
-      setStatus(`Google denied the request: ${errorParam}`)
+      showError(`Google denied the request: ${errorParam}`)
+      navigate('/settings')
       return
     }
     if (!code) {
-      setStatus('Missing authorization code.')
+      showError('Missing authorization code.')
+      navigate('/settings')
       return
     }
 
@@ -25,14 +29,18 @@ export default function GmailCallback() {
       .invoke('exchange-google-code', { body: { code } })
       .then(async ({ data, error }) => {
         if (error || data?.error) {
-          setStatus(`Failed to connect: ${data?.error || (await extractFunctionError(error))}`)
-          return
+          showError(`Failed to connect Gmail: ${data?.error || (await extractFunctionError(error))}`)
+        } else {
+          showSuccess('Gmail connected')
         }
-        setStatus('Gmail connected — redirecting…')
-        setTimeout(() => navigate('/settings'), 1200)
+        navigate('/settings')
       })
-      .catch((e) => setStatus(`Failed to connect: ${e.message}`))
-  }, [navigate])
+      .catch((e) => {
+        showError(`Failed to connect Gmail: ${e.message}`)
+        navigate('/settings')
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="h-full flex items-center justify-center">

@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom'
 import { useGmailConnection } from '../hooks/useGmailConnection'
 import { useTriageRules } from '../hooks/useTriageRules'
 import { startGmailConnect } from '../lib/gmailAuth'
+import { useToast } from '../components/ui/Toast'
 import Button from '../components/ui/Button'
 
 function formatDateTime(iso) {
@@ -19,6 +20,7 @@ function ruleScopeLabel(r) {
 
 function TriageRulesSection({ userId }) {
   const { rules, loading, addRule, deleteRule } = useTriageRules(userId)
+  const { showSuccess, showError } = useToast()
   const [scope, setScope] = useState('general')
   const [matchValue, setMatchValue] = useState('')
   const [action, setAction] = useState('')
@@ -28,15 +30,29 @@ function TriageRulesSection({ userId }) {
     e.preventDefault()
     if (scope !== 'general' && !matchValue.trim()) return
     if (!action && !guidance.trim()) return
-    await addRule({
-      matchType: scope === 'general' ? null : scope,
-      matchValue: scope === 'general' ? null : matchValue.trim(),
-      action: action || null,
-      guidance: guidance.trim() || null,
-    })
-    setMatchValue('')
-    setAction('')
-    setGuidance('')
+    try {
+      await addRule({
+        matchType: scope === 'general' ? null : scope,
+        matchValue: scope === 'general' ? null : matchValue.trim(),
+        action: action || null,
+        guidance: guidance.trim() || null,
+      })
+      setMatchValue('')
+      setAction('')
+      setGuidance('')
+      showSuccess('Rule added')
+    } catch (e) {
+      showError(e.message)
+    }
+  }
+
+  const handleDelete = async (id) => {
+    try {
+      await deleteRule(id)
+      showSuccess('Rule removed')
+    } catch (e) {
+      showError(e.message)
+    }
   }
 
   if (loading) return null
@@ -101,7 +117,7 @@ function TriageRulesSection({ userId }) {
               {r.guidance && <div className="text-gray-400 mt-0.5">{r.guidance}</div>}
             </div>
             <button
-              onClick={() => deleteRule(r.id)}
+              onClick={() => handleDelete(r.id)}
               className="text-gray-300 hover:text-black text-[12px] shrink-0"
             >
               ✕

@@ -1,23 +1,32 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { extractFunctionError } from '../lib/functionsError'
+import { useToast } from '../components/ui/Toast'
 
 export function useEmailArchiveCandidates(userId) {
   const [candidatesByTaskId, setCandidatesByTaskId] = useState({})
   const [loading, setLoading] = useState(true)
+  const loadedOnce = useRef(false)
+  const { showError } = useToast()
 
   const load = useCallback(async () => {
     if (!userId) return
-    setLoading(true)
-    const { data, error } = await supabase.from('email_archive_candidates').select('*').eq('user_id', userId)
-    if (error) throw error
-    const map = {}
-    data.forEach((c) => {
-      if (c.task_id) map[c.task_id] = c
-    })
-    setCandidatesByTaskId(map)
-    setLoading(false)
-  }, [userId])
+    if (!loadedOnce.current) setLoading(true)
+    try {
+      const { data, error } = await supabase.from('email_archive_candidates').select('*').eq('user_id', userId)
+      if (error) throw error
+      const map = {}
+      data.forEach((c) => {
+        if (c.task_id) map[c.task_id] = c
+      })
+      setCandidatesByTaskId(map)
+    } catch (e) {
+      showError(e.message)
+    } finally {
+      loadedOnce.current = true
+      setLoading(false)
+    }
+  }, [userId, showError])
 
   useEffect(() => {
     load()
@@ -32,12 +41,19 @@ export function useEmailArchiveCandidates(userId) {
     await load()
   }
 
-  const ignore = async (emailArchiveCandidateId) => {
+  const ignore = async (candidate) => {
     const { error } = await supabase
       .from('email_archive_candidates')
       .update({ status: 'ignored' })
-      .eq('id', emailArchiveCandidateId)
+      .eq('id', candidate.id)
     if (error) throw error
+    if (candidate.task_id) {
+      const { error: taskError } = await supabase
+        .from('tasks')
+        .update({ status: 'done', updated_at: new Date().toISOString() })
+        .eq('id', candidate.task_id)
+      if (taskError) throw taskError
+    }
     await load()
   }
 

@@ -1,23 +1,32 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { extractFunctionError } from '../lib/functionsError'
+import { useToast } from '../components/ui/Toast'
 
 export function useEmailDrafts(userId) {
   const [draftsByTaskId, setDraftsByTaskId] = useState({})
   const [loading, setLoading] = useState(true)
+  const loadedOnce = useRef(false)
+  const { showError } = useToast()
 
   const load = useCallback(async () => {
     if (!userId) return
-    setLoading(true)
-    const { data, error } = await supabase.from('email_drafts').select('*').eq('user_id', userId)
-    if (error) throw error
-    const map = {}
-    data.forEach((d) => {
-      if (d.task_id) map[d.task_id] = d
-    })
-    setDraftsByTaskId(map)
-    setLoading(false)
-  }, [userId])
+    if (!loadedOnce.current) setLoading(true)
+    try {
+      const { data, error } = await supabase.from('email_drafts').select('*').eq('user_id', userId)
+      if (error) throw error
+      const map = {}
+      data.forEach((d) => {
+        if (d.task_id) map[d.task_id] = d
+      })
+      setDraftsByTaskId(map)
+    } catch (e) {
+      showError(e.message)
+    } finally {
+      loadedOnce.current = true
+      setLoading(false)
+    }
+  }, [userId, showError])
 
   useEffect(() => {
     load()

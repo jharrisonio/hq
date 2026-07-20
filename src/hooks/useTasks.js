@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useToast } from '../components/ui/Toast'
 
 function assembleTask(row, allRows, linkRows, relRows) {
   const links = linkRows
@@ -48,29 +49,37 @@ function assembleTask(row, allRows, linkRows, relRows) {
 export function useTasks(userId, projectId) {
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
+  const loadedOnce = useRef(false)
+  const { showError } = useToast()
 
   const load = useCallback(async () => {
     if (!userId) return
-    setLoading(true)
+    if (!loadedOnce.current) setLoading(true)
 
-    let query = supabase.from('tasks').select('*').eq('user_id', userId)
-    query = projectId ? query.eq('project_id', projectId) : query.is('project_id', null)
-    const { data: rows, error } = await query.order('position', { ascending: true })
-    if (error) throw error
+    try {
+      let query = supabase.from('tasks').select('*').eq('user_id', userId)
+      query = projectId ? query.eq('project_id', projectId) : query.is('project_id', null)
+      const { data: rows, error } = await query.order('position', { ascending: true })
+      if (error) throw error
 
-    const ids = rows.map((r) => r.id)
-    const [{ data: linkRows, error: linkError }, { data: relRows, error: relError }] = ids.length
-      ? await Promise.all([
-          supabase.from('task_links').select('*').in('task_id', ids),
-          supabase.from('task_relationships').select('*').in('task_id', ids),
-        ])
-      : [{ data: [] }, { data: [] }]
-    if (linkError) throw linkError
-    if (relError) throw relError
+      const ids = rows.map((r) => r.id)
+      const [{ data: linkRows, error: linkError }, { data: relRows, error: relError }] = ids.length
+        ? await Promise.all([
+            supabase.from('task_links').select('*').in('task_id', ids),
+            supabase.from('task_relationships').select('*').in('task_id', ids),
+          ])
+        : [{ data: [] }, { data: [] }]
+      if (linkError) throw linkError
+      if (relError) throw relError
 
-    setTasks(rows.map((r) => assembleTask(r, rows, linkRows, relRows)))
-    setLoading(false)
-  }, [userId, projectId])
+      setTasks(rows.map((r) => assembleTask(r, rows, linkRows, relRows)))
+    } catch (e) {
+      showError(e.message)
+    } finally {
+      loadedOnce.current = true
+      setLoading(false)
+    }
+  }, [userId, projectId, showError])
 
   useEffect(() => {
     load()

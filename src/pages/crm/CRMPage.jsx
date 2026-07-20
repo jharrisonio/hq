@@ -1,18 +1,24 @@
 import { useState } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
 import { useContacts } from '../../hooks/useContacts'
+import { useToast } from '../../components/ui/Toast'
 import Button from '../../components/ui/Button'
 
 export default function CRMPage() {
   const { user } = useOutletContext()
   const { contacts, loading, addContact } = useContacts(user?.id)
+  const { showError } = useToast()
   const [name, setName] = useState('')
 
   const submit = async (e) => {
     e.preventDefault()
     if (!name.trim()) return
-    await addContact({ name: name.trim() })
-    setName('')
+    try {
+      await addContact({ name: name.trim() })
+      setName('')
+    } catch (err) {
+      showError(err.message)
+    }
   }
 
   if (loading) return null

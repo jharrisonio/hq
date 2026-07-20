@@ -7,6 +7,7 @@ import { useEmailArchiveCandidates } from '../hooks/useEmailArchiveCandidates'
 import { useTriageRules } from '../hooks/useTriageRules'
 import { supabase } from '../lib/supabase'
 import { extractFunctionError } from '../lib/functionsError'
+import { useToast } from '../components/ui/Toast'
 import TaskListView from '../components/tasks/TaskListView'
 import Button from '../components/ui/Button'
 
@@ -22,8 +23,8 @@ function formatEmailDate(dateHeader) {
 }
 
 function EmailDraftDetail({ draft, onApproveAndSend, onDontFlagAgain }) {
+  const { showSuccess, showError } = useToast()
   const [sending, setSending] = useState(false)
-  const [error, setError] = useState(null)
   const [ruleAdded, setRuleAdded] = useState(false)
   const [liveBody, setLiveBody] = useState(null)
   const [original, setOriginal] = useState(null)
@@ -62,19 +63,24 @@ function EmailDraftDetail({ draft, onApproveAndSend, onDontFlagAgain }) {
 
   const handleSend = async () => {
     setSending(true)
-    setError(null)
     try {
       await onApproveAndSend(draft.id)
+      showSuccess('Email sent')
     } catch (err) {
-      setError(err.message)
+      showError(err.message)
     } finally {
       setSending(false)
     }
   }
 
   const handleDontFlag = async () => {
-    await onDontFlagAgain(draft)
-    setRuleAdded(true)
+    try {
+      await onDontFlagAgain(draft)
+      setRuleAdded(true)
+      showSuccess(`Won’t flag ${draft.to_email} again`)
+    } catch (err) {
+      showError(err.message)
+    }
   }
 
   return (
@@ -138,10 +144,7 @@ function EmailDraftDetail({ draft, onApproveAndSend, onDontFlagAgain }) {
         </Button>
       )}
 
-      {error && <span className="text-[11px] text-black">{error}</span>}
-      {!error && draft.status === 'failed' && draft.error && (
-        <span className="text-[11px] text-black">{draft.error}</span>
-      )}
+      {draft.status === 'failed' && draft.error && <span className="text-[11px] text-black">{draft.error}</span>}
 
       {draft.status !== 'sent' &&
         draft.to_email &&
@@ -157,19 +160,19 @@ function EmailDraftDetail({ draft, onApproveAndSend, onDontFlagAgain }) {
 }
 
 function UnsubscribeDetail({ subscription, onUnsubscribe, onDismiss }) {
+  const { showSuccess, showError } = useToast()
   const [working, setWorking] = useState(false)
-  const [error, setError] = useState(null)
 
   const handleUnsubscribe = async () => {
     setWorking(true)
-    setError(null)
     try {
       if (subscription.unsubscribe_method !== 'one_click_post' && subscription.unsubscribe_url) {
         window.open(subscription.unsubscribe_url, '_blank', 'noreferrer')
       }
       await onUnsubscribe(subscription.id)
+      showSuccess('Unsubscribed')
     } catch (err) {
-      setError(err.message)
+      showError(err.message)
     } finally {
       setWorking(false)
     }
@@ -177,11 +180,11 @@ function UnsubscribeDetail({ subscription, onUnsubscribe, onDismiss }) {
 
   const handleDismiss = async () => {
     setWorking(true)
-    setError(null)
     try {
-      await onDismiss(subscription.id)
+      await onDismiss(subscription)
+      showSuccess('Kept — won’t ask again')
     } catch (err) {
-      setError(err.message)
+      showError(err.message)
     } finally {
       setWorking(false)
     }
@@ -213,8 +216,7 @@ function UnsubscribeDetail({ subscription, onUnsubscribe, onDismiss }) {
         </div>
       )}
 
-      {error && <span className="text-[11px] text-black">{error}</span>}
-      {!error && subscription.status === 'failed' && subscription.error && (
+      {subscription.status === 'failed' && subscription.error && (
         <span className="text-[11px] text-black">{subscription.error}</span>
       )}
     </div>
@@ -222,16 +224,16 @@ function UnsubscribeDetail({ subscription, onUnsubscribe, onDismiss }) {
 }
 
 function ArchiveCandidateDetail({ candidate, onArchive, onIgnore }) {
+  const { showSuccess, showError } = useToast()
   const [working, setWorking] = useState(false)
-  const [error, setError] = useState(null)
 
   const handleArchive = async () => {
     setWorking(true)
-    setError(null)
     try {
       await onArchive(candidate.id)
+      showSuccess('Archived')
     } catch (err) {
-      setError(err.message)
+      showError(err.message)
     } finally {
       setWorking(false)
     }
@@ -239,11 +241,11 @@ function ArchiveCandidateDetail({ candidate, onArchive, onIgnore }) {
 
   const handleIgnore = async () => {
     setWorking(true)
-    setError(null)
     try {
-      await onIgnore(candidate.id)
+      await onIgnore(candidate)
+      showSuccess('Ignored — kept in inbox')
     } catch (err) {
-      setError(err.message)
+      showError(err.message)
     } finally {
       setWorking(false)
     }
@@ -280,8 +282,7 @@ function ArchiveCandidateDetail({ candidate, onArchive, onIgnore }) {
         </div>
       )}
 
-      {error && <span className="text-[11px] text-black">{error}</span>}
-      {!error && candidate.status === 'failed' && candidate.error && (
+      {candidate.status === 'failed' && candidate.error && (
         <span className="text-[11px] text-black">{candidate.error}</span>
       )}
     </div>
@@ -290,7 +291,16 @@ function ArchiveCandidateDetail({ candidate, onArchive, onIgnore }) {
 
 export default function TodosPage() {
   const { user } = useOutletContext()
-  const { tasks, loading, getTask, updateStatus, updateDueDate, addTask, deleteTask } = useTasks(user?.id, null)
+  const {
+    tasks,
+    loading,
+    getTask,
+    updateStatus,
+    updateDueDate,
+    addTask,
+    deleteTask,
+    refresh: refreshTasks,
+  } = useTasks(user?.id, null)
   const { draftsByTaskId, loading: draftsLoading, approveAndSend } = useEmailDrafts(user?.id)
   const {
     subscriptionsByTaskId,
@@ -298,14 +308,38 @@ export default function TodosPage() {
     unsubscribe,
     dismiss,
   } = useEmailSubscriptions(user?.id)
-  const {
-    candidatesByTaskId,
-    loading: candidatesLoading,
-    archive,
-    ignore,
-  } = useEmailArchiveCandidates(user?.id)
+  const { candidatesByTaskId, loading: candidatesLoading, archive, ignore } = useEmailArchiveCandidates(user?.id)
   const { addRule } = useTriageRules(user?.id)
+  const { showError } = useToast()
   const [title, setTitle] = useState('')
+
+  // Every action here marks its linked todo done server-side (or in the hook
+  // itself for dismiss/ignore) — refresh so the strikethrough shows without
+  // requiring a full page reload.
+  const handleApproveAndSend = async (id) => {
+    await approveAndSend(id)
+    refreshTasks()
+  }
+
+  const handleUnsubscribe = async (id) => {
+    await unsubscribe(id)
+    refreshTasks()
+  }
+
+  const handleDismiss = async (subscription) => {
+    await dismiss(subscription)
+    refreshTasks()
+  }
+
+  const handleArchive = async (id) => {
+    await archive(id)
+    refreshTasks()
+  }
+
+  const handleIgnore = async (candidate) => {
+    await ignore(candidate)
+    refreshTasks()
+  }
 
   const dontFlagAgain = (draft) =>
     addRule({
@@ -318,8 +352,12 @@ export default function TodosPage() {
   const submit = async (e) => {
     e.preventDefault()
     if (!title.trim()) return
-    await addTask({ title: title.trim() })
-    setTitle('')
+    try {
+      await addTask({ title: title.trim() })
+      setTitle('')
+    } catch (err) {
+      showError(err.message)
+    }
   }
 
   const getExtraSections = (task) => {
@@ -329,7 +367,7 @@ export default function TodosPage() {
         {
           label: 'Email',
           content: (
-            <EmailDraftDetail draft={draft} onApproveAndSend={approveAndSend} onDontFlagAgain={dontFlagAgain} />
+            <EmailDraftDetail draft={draft} onApproveAndSend={handleApproveAndSend} onDontFlagAgain={dontFlagAgain} />
           ),
         },
       ]
@@ -339,7 +377,9 @@ export default function TodosPage() {
       return [
         {
           label: 'Unsubscribe',
-          content: <UnsubscribeDetail subscription={subscription} onUnsubscribe={unsubscribe} onDismiss={dismiss} />,
+          content: (
+            <UnsubscribeDetail subscription={subscription} onUnsubscribe={handleUnsubscribe} onDismiss={handleDismiss} />
+          ),
         },
       ]
     }
@@ -348,7 +388,7 @@ export default function TodosPage() {
       return [
         {
           label: 'Archive Candidate',
-          content: <ArchiveCandidateDetail candidate={candidate} onArchive={archive} onIgnore={ignore} />,
+          content: <ArchiveCandidateDetail candidate={candidate} onArchive={handleArchive} onIgnore={handleIgnore} />,
         },
       ]
     }
