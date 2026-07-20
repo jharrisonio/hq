@@ -35,7 +35,15 @@ function EmailDraftDetail({ draft, onApproveAndSend, onDontFlagAgain }) {
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
+      {draft.body ? (
+        <div className="text-[12.5px] leading-relaxed text-gray-600 whitespace-pre-wrap border-l-2 border-gray-100 pl-3">
+          {draft.body}
+        </div>
+      ) : (
+        <div className="text-[12px] text-gray-300">No draft text stored — open in Gmail to view it.</div>
+      )}
+
       {editUrl && (
         <a
           href={editUrl}
