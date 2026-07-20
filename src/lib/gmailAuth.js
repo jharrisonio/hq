@@ -1,4 +1,7 @@
-const GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send"
+// gmail.compose covers drafts.get (reading a draft's content) as well as
+// drafts.send — narrower than gmail.readonly/gmail.modify, which would grant
+// access to the whole mailbox instead of just draft management.
+const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.compose"
 
 export function gmailCallbackRedirectUri() {
   return `${window.location.origin}/auth/gmail-callback`
@@ -9,7 +12,7 @@ export function startGmailConnect() {
     client_id: import.meta.env.VITE_GOOGLE_GMAIL_CLIENT_ID,
     redirect_uri: gmailCallbackRedirectUri(),
     response_type: "code",
-    scope: GMAIL_SEND_SCOPE,
+    scope: GMAIL_SCOPE,
     access_type: "offline",
     prompt: "consent",
   })

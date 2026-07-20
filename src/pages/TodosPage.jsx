@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { useTasks } from '../hooks/useTasks'
 import { useEmailDrafts } from '../hooks/useEmailDrafts'
 import { useTriageRules } from '../hooks/useTriageRules'
+import { supabase } from '../lib/supabase'
 import TaskListView from '../components/tasks/TaskListView'
 import Button from '../components/ui/Button'
 
@@ -15,7 +16,35 @@ function EmailDraftDetail({ draft, onApproveAndSend, onDontFlagAgain }) {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState(null)
   const [ruleAdded, setRuleAdded] = useState(false)
+  const [liveBody, setLiveBody] = useState(null)
+  const [liveLoading, setLiveLoading] = useState(true)
+  const [liveError, setLiveError] = useState(null)
   const editUrl = draftGmailUrl(draft)
+
+  useEffect(() => {
+    let cancelled = false
+    setLiveBody(null)
+    setLiveLoading(true)
+    setLiveError(null)
+    supabase.functions
+      .invoke('get-gmail-draft', { body: { email_draft_id: draft.id } })
+      .then(({ data, error: err }) => {
+        if (cancelled) return
+        if (err || data?.error) setLiveError(err?.message || data?.error)
+        else setLiveBody(data?.body || '')
+      })
+      .catch((e) => {
+        if (!cancelled) setLiveError(e.message)
+      })
+      .finally(() => {
+        if (!cancelled) setLiveLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [draft.id])
+
+  const displayBody = liveBody !== null ? liveBody : draft.body
 
   const handleSend = async () => {
     setSending(true)
@@ -36,12 +65,27 @@ function EmailDraftDetail({ draft, onApproveAndSend, onDontFlagAgain }) {
 
   return (
     <div className="flex flex-col gap-3">
-      {draft.body ? (
-        <div className="text-[12.5px] leading-relaxed text-gray-600 whitespace-pre-wrap border-l-2 border-gray-100 pl-3">
-          {draft.body}
+      {displayBody ? (
+        <div>
+          <div className="text-[12.5px] leading-relaxed text-gray-600 whitespace-pre-wrap border-l-2 border-gray-100 pl-3">
+            {displayBody}
+          </div>
+          {liveLoading && liveBody === null && (
+            <div className="text-[10px] text-gray-300 mt-1">Refreshing from Gmail…</div>
+          )}
+          {!liveLoading && liveError && liveBody === null && (
+            <div className="text-[10px] text-gray-300 mt-1">
+              Showing last saved version — couldn’t refresh from Gmail ({liveError}).
+            </div>
+          )}
         </div>
+      ) : liveLoading ? (
+        <div className="text-[12px] text-gray-300">Loading draft…</div>
       ) : (
-        <div className="text-[12px] text-gray-300">No draft text stored — open in Gmail to view it.</div>
+        <div className="text-[12px] text-gray-300">
+          {liveError ? `Couldn’t load the draft (${liveError}).` : 'No draft text available.'} Open in Gmail to view
+          it.
+        </div>
       )}
 
       {editUrl && (
