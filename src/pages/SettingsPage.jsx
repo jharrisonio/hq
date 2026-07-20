@@ -12,19 +12,31 @@ function formatDateTime(iso) {
 
 const ACTION_LABELS = { always_actionable: 'Always draft a reply', always_archive: 'Always archive' }
 
+function ruleScopeLabel(r) {
+  if (!r.match_type) return 'All emails'
+  return r.match_type === 'sender' ? r.match_value : `@${r.match_value}`
+}
+
 function TriageRulesSection({ userId }) {
   const { rules, loading, addRule, deleteRule } = useTriageRules(userId)
-  const [matchType, setMatchType] = useState('sender')
+  const [scope, setScope] = useState('general')
   const [matchValue, setMatchValue] = useState('')
-  const [action, setAction] = useState('always_archive')
-  const [note, setNote] = useState('')
+  const [action, setAction] = useState('')
+  const [guidance, setGuidance] = useState('')
 
   const submit = async (e) => {
     e.preventDefault()
-    if (!matchValue.trim()) return
-    await addRule({ matchType, matchValue: matchValue.trim(), action, note: note.trim() })
+    if (scope !== 'general' && !matchValue.trim()) return
+    if (!action && !guidance.trim()) return
+    await addRule({
+      matchType: scope === 'general' ? null : scope,
+      matchValue: scope === 'general' ? null : matchValue.trim(),
+      action: action || null,
+      guidance: guidance.trim() || null,
+    })
     setMatchValue('')
-    setNote('')
+    setAction('')
+    setGuidance('')
   }
 
   if (loading) return null
@@ -35,38 +47,44 @@ function TriageRulesSection({ userId }) {
         <div className="text-[13px] font-medium">Email triage rules</div>
         <div className="text-[12px] text-gray-400 mt-0.5">
           Read by the triage automation before classifying each email — corrections here take effect on its next run.
+          A rule can be a hard override, free-form guidance it weighs alongside its own judgment, or both.
         </div>
       </div>
 
       <form onSubmit={submit} className="flex flex-col gap-2">
         <div className="flex gap-2">
           <select
-            value={matchType}
-            onChange={(e) => setMatchType(e.target.value)}
+            value={scope}
+            onChange={(e) => setScope(e.target.value)}
             className="text-[12px] border border-gray-200 rounded-sm px-2 py-1.5"
           >
-            <option value="sender">Sender email</option>
-            <option value="domain">Sender domain</option>
+            <option value="general">All emails</option>
+            <option value="sender">Specific sender</option>
+            <option value="domain">Specific domain</option>
           </select>
-          <input
-            value={matchValue}
-            onChange={(e) => setMatchValue(e.target.value)}
-            placeholder={matchType === 'sender' ? 'billing@example.com' : 'example.com'}
-            className="flex-1 text-[13px] border border-gray-200 rounded-sm px-3 py-1.5"
-          />
+          {scope !== 'general' && (
+            <input
+              value={matchValue}
+              onChange={(e) => setMatchValue(e.target.value)}
+              placeholder={scope === 'sender' ? 'billing@example.com' : 'example.com'}
+              className="flex-1 text-[13px] border border-gray-200 rounded-sm px-3 py-1.5"
+            />
+          )}
         </div>
         <select
           value={action}
           onChange={(e) => setAction(e.target.value)}
           className="text-[12px] border border-gray-200 rounded-sm px-2 py-1.5"
         >
+          <option value="">No hard override — just guidance</option>
           <option value="always_archive">Always archive</option>
           <option value="always_actionable">Always draft a reply</option>
         </select>
-        <input
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="Note (optional)"
+        <textarea
+          value={guidance}
+          onChange={(e) => setGuidance(e.target.value)}
+          placeholder="e.g. these are usually just FYI, no need to reply unless I'm CC'd directly"
+          rows={2}
           className="text-[13px] border border-gray-200 rounded-sm px-3 py-1.5"
         />
         <Button type="submit" variant="secondary" className="self-start">
@@ -76,11 +94,11 @@ function TriageRulesSection({ userId }) {
 
       <div className="flex flex-col gap-1.5">
         {rules.map((r) => (
-          <div key={r.id} className="flex items-center justify-between gap-2 py-1.5 border-t border-gray-100">
+          <div key={r.id} className="flex items-start justify-between gap-2 py-1.5 border-t border-gray-100">
             <div className="text-[12px] min-w-0">
-              <span className="font-medium">{r.match_value}</span>
-              <span className="text-gray-400"> — {ACTION_LABELS[r.action] || r.action}</span>
-              {r.note && <span className="text-gray-400"> ({r.note})</span>}
+              <span className="font-medium">{ruleScopeLabel(r)}</span>
+              {r.action && <span className="text-gray-400"> — {ACTION_LABELS[r.action]}</span>}
+              {r.guidance && <div className="text-gray-400 mt-0.5">{r.guidance}</div>}
             </div>
             <button
               onClick={() => deleteRule(r.id)}

@@ -22,13 +22,13 @@ export function useTriageRules(userId) {
     load()
   }, [load])
 
-  const addRule = async ({ matchType, matchValue, action, note }) => {
+  const addRule = async ({ matchType, matchValue, action, guidance }) => {
     const { error } = await supabase.from('email_triage_rules').insert({
       user_id: userId,
-      match_type: matchType,
-      match_value: matchValue,
-      action,
-      note: note || null,
+      match_type: matchType || null,
+      match_value: matchValue || null,
+      action: action || null,
+      guidance: guidance || null,
     })
     if (error) throw error
     await load()

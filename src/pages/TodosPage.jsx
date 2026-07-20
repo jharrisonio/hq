@@ -87,7 +87,7 @@ export default function TodosPage() {
       matchType: 'sender',
       matchValue: draft.to_email,
       action: 'always_archive',
-      note: draft.subject ? `From a corrected todo: "${draft.subject}"` : 'From a corrected todo',
+      guidance: draft.subject ? `From a corrected todo: "${draft.subject}"` : 'From a corrected todo',
     })
 
   const submit = async (e) => {
