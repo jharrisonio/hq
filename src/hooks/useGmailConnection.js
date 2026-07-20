@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { extractFunctionError } from '../lib/functionsError'
 
 export function useGmailConnection(userId) {
   const [connected, setConnected] = useState(false)
@@ -10,7 +11,7 @@ export function useGmailConnection(userId) {
     if (!userId) return
     setLoading(true)
     const { data, error } = await supabase.functions.invoke('gmail-connection-status')
-    if (error) throw error
+    if (error) throw new Error(data?.error || (await extractFunctionError(error)))
     setConnected(Boolean(data?.connected))
     setUpdatedAt(data?.updatedAt ?? null)
     setLoading(false)

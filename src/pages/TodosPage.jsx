@@ -4,6 +4,7 @@ import { useTasks } from '../hooks/useTasks'
 import { useEmailDrafts } from '../hooks/useEmailDrafts'
 import { useTriageRules } from '../hooks/useTriageRules'
 import { supabase } from '../lib/supabase'
+import { extractFunctionError } from '../lib/functionsError'
 import TaskListView from '../components/tasks/TaskListView'
 import Button from '../components/ui/Button'
 
@@ -36,9 +37,9 @@ function EmailDraftDetail({ draft, onApproveAndSend, onDontFlagAgain }) {
     setLiveError(null)
     supabase.functions
       .invoke('get-gmail-draft', { body: { email_draft_id: draft.id } })
-      .then(({ data, error: err }) => {
+      .then(async ({ data, error: err }) => {
         if (cancelled) return
-        if (err || data?.error) setLiveError(err?.message || data?.error)
+        if (err || data?.error) setLiveError(data?.error || (await extractFunctionError(err)))
         else {
           setLiveBody(data?.body || '')
           setOriginal(data?.original || null)

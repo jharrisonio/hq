@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { extractFunctionError } from '../lib/functionsError'
 
 export default function GmailCallback() {
   const navigate = useNavigate()
@@ -22,9 +23,9 @@ export default function GmailCallback() {
 
     supabase.functions
       .invoke('exchange-google-code', { body: { code } })
-      .then(({ data, error }) => {
+      .then(async ({ data, error }) => {
         if (error || data?.error) {
-          setStatus(`Failed to connect: ${error?.message || data?.error}`)
+          setStatus(`Failed to connect: ${data?.error || (await extractFunctionError(error))}`)
           return
         }
         setStatus('Gmail connected — redirecting…')

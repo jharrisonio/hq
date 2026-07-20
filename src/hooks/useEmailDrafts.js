@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { extractFunctionError } from '../lib/functionsError'
 
 export function useEmailDrafts(userId) {
   const [draftsByTaskId, setDraftsByTaskId] = useState({})
@@ -26,7 +27,7 @@ export function useEmailDrafts(userId) {
     const { data, error } = await supabase.functions.invoke('send-gmail-draft', {
       body: { email_draft_id: emailDraftId },
     })
-    if (error) throw error
+    if (error) throw new Error(data?.error || (await extractFunctionError(error)))
     if (data?.error) throw new Error(data.error)
     await load()
   }
