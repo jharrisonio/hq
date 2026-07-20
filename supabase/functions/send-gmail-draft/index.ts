@@ -4,6 +4,18 @@ import { createClient } from "jsr:@supabase/supabase-js@2"
 const CLIENT_ID = Deno.env.get("GOOGLE_GMAIL_CLIENT_ID")!
 const CLIENT_SECRET = Deno.env.get("GOOGLE_GMAIL_CLIENT_SECRET")!
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+}
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  })
+}
+
 async function refreshAccessToken(refreshToken: string) {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -21,10 +33,14 @@ async function refreshAccessToken(refreshToken: string) {
 }
 
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders })
+  }
+
   try {
     const authHeader = req.headers.get("Authorization")
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing Authorization header" }), { status: 401 })
+      return json({ error: "Missing Authorization header" }, 401)
     }
 
     const userClient = createClient(
@@ -34,13 +50,13 @@ Deno.serve(async (req: Request) => {
     )
     const { data: userData, error: userError } = await userClient.auth.getUser()
     if (userError || !userData.user) {
-      return new Response(JSON.stringify({ error: "Invalid session" }), { status: 401 })
+      return json({ error: "Invalid session" }, 401)
     }
     const userId = userData.user.id
 
     const { email_draft_id } = await req.json()
     if (!email_draft_id) {
-      return new Response(JSON.stringify({ error: "Missing email_draft_id" }), { status: 400 })
+      return json({ error: "Missing email_draft_id" }, 400)
     }
 
     const { data: draft, error: draftError } = await userClient
@@ -49,10 +65,10 @@ Deno.serve(async (req: Request) => {
       .eq("id", email_draft_id)
       .single()
     if (draftError || !draft) {
-      return new Response(JSON.stringify({ error: "Draft not found" }), { status: 404 })
+      return json({ error: "Draft not found" }, 404)
     }
     if (draft.status === "sent") {
-      return new Response(JSON.stringify({ success: true, alreadySent: true }))
+      return json({ success: true, alreadySent: true })
     }
 
     const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!)
@@ -63,14 +79,14 @@ Deno.serve(async (req: Request) => {
       .eq("user_id", userId)
       .single()
     if (tokenError || !tokenRow) {
-      return new Response(JSON.stringify({ error: "Gmail is not connected for this account" }), { status: 400 })
+      return json({ error: "Gmail is not connected for this account" }, 400)
     }
 
     let accessToken: string
     try {
       accessToken = await refreshAccessToken(tokenRow.refresh_token)
     } catch (e) {
-      return new Response(JSON.stringify({ error: `Token refresh failed: ${e}` }), { status: 500 })
+      return json({ error: `Token refresh failed: ${e}` }, 500)
     }
 
     const sendRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/drafts/send", {
@@ -88,7 +104,7 @@ Deno.serve(async (req: Request) => {
         .from("email_drafts")
         .update({ status: "failed", error: sendJson.error?.message || "Send failed" })
         .eq("id", email_draft_id)
-      return new Response(JSON.stringify({ error: sendJson.error?.message || "Send failed" }), { status: 500 })
+      return json({ error: sendJson.error?.message || "Send failed" }, 500)
     }
 
     const now = new Date().toISOString()
@@ -98,10 +114,8 @@ Deno.serve(async (req: Request) => {
       await userClient.from("tasks").update({ status: "done", updated_at: now }).eq("id", draft.task_id)
     }
 
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { "Content-Type": "application/json" },
-    })
+    return json({ success: true })
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), { status: 500 })
+    return json({ error: String(e) }, 500)
   }
 })

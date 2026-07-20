@@ -5,11 +5,27 @@ const CLIENT_ID = Deno.env.get("GOOGLE_GMAIL_CLIENT_ID")!
 const CLIENT_SECRET = Deno.env.get("GOOGLE_GMAIL_CLIENT_SECRET")!
 const REDIRECT_URI = Deno.env.get("GOOGLE_GMAIL_REDIRECT_URI")!
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+}
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  })
+}
+
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders })
+  }
+
   try {
     const authHeader = req.headers.get("Authorization")
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing Authorization header" }), { status: 401 })
+      return json({ error: "Missing Authorization header" }, 401)
     }
 
     const userClient = createClient(
@@ -19,13 +35,13 @@ Deno.serve(async (req: Request) => {
     )
     const { data: userData, error: userError } = await userClient.auth.getUser()
     if (userError || !userData.user) {
-      return new Response(JSON.stringify({ error: "Invalid session" }), { status: 401 })
+      return json({ error: "Invalid session" }, 401)
     }
     const userId = userData.user.id
 
     const { code } = await req.json()
     if (!code) {
-      return new Response(JSON.stringify({ error: "Missing code" }), { status: 400 })
+      return json({ error: "Missing code" }, 400)
     }
 
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -41,15 +57,15 @@ Deno.serve(async (req: Request) => {
     })
     const tokenJson = await tokenRes.json()
     if (!tokenRes.ok) {
-      return new Response(JSON.stringify({ error: "Token exchange failed", detail: tokenJson }), { status: 400 })
+      return json({ error: "Token exchange failed", detail: tokenJson }, 400)
     }
     if (!tokenJson.refresh_token) {
-      return new Response(
-        JSON.stringify({
+      return json(
+        {
           error:
             "No refresh token returned — revoke HQ's access at myaccount.google.com/permissions and try connecting again",
-        }),
-        { status: 400 }
+        },
+        400
       )
     }
 
@@ -64,13 +80,11 @@ Deno.serve(async (req: Request) => {
       updated_at: new Date().toISOString(),
     })
     if (upsertError) {
-      return new Response(JSON.stringify({ error: upsertError.message }), { status: 500 })
+      return json({ error: upsertError.message }, 500)
     }
 
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { "Content-Type": "application/json" },
-    })
+    return json({ success: true })
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), { status: 500 })
+    return json({ error: String(e) }, 500)
   }
 })
