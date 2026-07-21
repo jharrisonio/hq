@@ -32,6 +32,21 @@ export function useEmailSubscriptions(userId) {
     load()
   }, [load])
 
+  useEffect(() => {
+    if (!userId) return
+    const channel = supabase
+      .channel(`email-subscriptions-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'email_subscriptions', filter: `user_id=eq.${userId}` },
+        () => load()
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [userId, load])
+
   const unsubscribe = async (emailSubscriptionId) => {
     const { data, error } = await supabase.functions.invoke('unsubscribe-email', {
       body: { email_subscription_id: emailSubscriptionId },

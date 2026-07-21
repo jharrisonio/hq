@@ -32,6 +32,21 @@ export function useEmailDrafts(userId) {
     load()
   }, [load])
 
+  useEffect(() => {
+    if (!userId) return
+    const channel = supabase
+      .channel(`email-drafts-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'email_drafts', filter: `user_id=eq.${userId}` },
+        () => load()
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [userId, load])
+
   const approveAndSend = async (emailDraftId) => {
     const { data, error } = await supabase.functions.invoke('send-gmail-draft', {
       body: { email_draft_id: emailDraftId },

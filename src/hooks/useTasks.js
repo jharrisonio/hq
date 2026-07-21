@@ -86,6 +86,24 @@ export function useTasks(userId, projectId) {
     load()
   }, [load])
 
+  // Realtime — e.g. the triage automation inserting a new todo shows up
+  // without a manual refresh. load() only flips `loading` on the very first
+  // call (see loadedOnce above), so this is a silent background refresh.
+  useEffect(() => {
+    if (!userId) return
+    const channel = supabase
+      .channel(`tasks-${userId}-${projectId || 'none'}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${userId}` },
+        () => load()
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [userId, projectId, load])
+
   const getTask = (id) => tasks.find((t) => t.id === id)
 
   const updateStatus = async (id, status) => {

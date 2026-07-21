@@ -32,6 +32,21 @@ export function useEmailArchiveCandidates(userId) {
     load()
   }, [load])
 
+  useEffect(() => {
+    if (!userId) return
+    const channel = supabase
+      .channel(`email-archive-candidates-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'email_archive_candidates', filter: `user_id=eq.${userId}` },
+        () => load()
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [userId, load])
+
   const archive = async (emailArchiveCandidateId) => {
     const { data, error } = await supabase.functions.invoke('archive-email', {
       body: { email_archive_candidate_id: emailArchiveCandidateId },
