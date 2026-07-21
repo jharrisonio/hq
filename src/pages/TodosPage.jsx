@@ -5,6 +5,7 @@ import { useEmailDrafts } from '../hooks/useEmailDrafts'
 import { useEmailSubscriptions } from '../hooks/useEmailSubscriptions'
 import { useEmailArchiveCandidates } from '../hooks/useEmailArchiveCandidates'
 import { useTriageRules } from '../hooks/useTriageRules'
+import { useFinanceRecommendations } from '../hooks/useFinanceRecommendations'
 import { supabase } from '../lib/supabase'
 import { extractFunctionError } from '../lib/functionsError'
 import { useToast } from '../components/ui/Toast'
@@ -31,6 +32,14 @@ const COMPLETED_FILTER_WINDOW_MS = { day: 24 * 60 * 60 * 1000, week: 7 * 24 * 60
 const DRAFT_STATUS_BADGES = { sent: 'Sent', rejected: 'Not needed', failed: 'Reply failed' }
 const SUBSCRIPTION_STATUS_BADGES = { unsubscribed: 'Unsubscribed', dismissed: 'Kept', failed: 'Failed' }
 const CANDIDATE_STATUS_BADGES = { archived: 'Archived', ignored: 'Ignored', failed: 'Failed' }
+
+const currency = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' })
+const RECOMMENDATION_KIND_LABELS = {
+  cancel_subscription: 'Cancel Subscription',
+  switch_provider: 'Switch Provider',
+  spending_habit: 'Spending Habit',
+  other: 'Recommendation',
+}
 
 function isTaskVisible(task, completedFilter) {
   if (task.status !== 'done') return true
@@ -340,6 +349,99 @@ function ArchiveCandidateDetail({ candidate, onArchive, onIgnore }) {
   )
 }
 
+function FinanceRecommendationDetail({ recommendation, onDismiss }) {
+  const { showSuccess, showError } = useToast()
+  const [working, setWorking] = useState(false)
+  const [showReason, setShowReason] = useState(false)
+  const [reason, setReason] = useState('')
+
+  const handleDismiss = async (withReason) => {
+    setWorking(true)
+    try {
+      await onDismiss(recommendation, withReason ? reason.trim() : null)
+      showSuccess(withReason ? 'Dismissed — won’t suggest this again' : 'Dismissed')
+    } catch (err) {
+      showError(err.message)
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="text-[9px] text-gray-300 font-semibold uppercase tracking-wider">
+        {RECOMMENDATION_KIND_LABELS[recommendation.kind] || 'Recommendation'}
+      </div>
+
+      {recommendation.estimated_monthly_savings != null && (
+        <div className="text-[13px] font-medium text-black">
+          Save {currency.format(recommendation.estimated_monthly_savings)}/mo
+          <span className="text-gray-400 font-normal">
+            {' '}
+            ({currency.format(recommendation.estimated_monthly_savings * 12)}/yr)
+          </span>
+        </div>
+      )}
+
+      <div className="text-[12.5px] leading-relaxed text-gray-600 whitespace-pre-wrap break-words">
+        {recommendation.rationale}
+      </div>
+
+      {recommendation.status === 'dismissed' ? (
+        <div>
+          <span className="text-[10px] font-medium uppercase tracking-wider text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded-sm self-start">
+            Dismissed
+          </span>
+          {recommendation.dismissal_reason && (
+            <div className="text-[11px] text-gray-400 mt-1.5">{recommendation.dismissal_reason}</div>
+          )}
+        </div>
+      ) : showReason ? (
+        <div className="flex flex-col gap-2">
+          <textarea
+            autoFocus
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Why? e.g. staying with Rogers because their new plan matched the competitor's price"
+            rows={2}
+            className="text-[12.5px] border border-gray-200 rounded-sm px-2.5 py-1.5"
+          />
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => handleDismiss(true)}
+              disabled={working || !reason.trim()}
+              className="text-[12px]"
+            >
+              {working ? 'Saving…' : 'Dismiss & remember why'}
+            </Button>
+            <button onClick={() => setShowReason(false)} className="text-[11px] text-gray-400 hover:text-black">
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleDismiss(false)}
+            disabled={working}
+            className="text-[11px] text-gray-400 hover:text-black"
+          >
+            Dismiss
+          </button>
+          <button
+            onClick={() => setShowReason(true)}
+            disabled={working}
+            className="text-[11px] text-gray-400 hover:text-black"
+          >
+            Dismiss with a reason
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function TodosPage() {
   const { user } = useOutletContext()
   const {
@@ -360,6 +462,11 @@ export default function TodosPage() {
     dismiss,
   } = useEmailSubscriptions(user?.id)
   const { candidatesByTaskId, loading: candidatesLoading, archive, ignore } = useEmailArchiveCandidates(user?.id)
+  const {
+    recommendationsByTaskId,
+    loading: recommendationsLoading,
+    dismiss: dismissRecommendation,
+  } = useFinanceRecommendations(user?.id)
   const { addRule } = useTriageRules(user?.id)
   const { showError } = useToast()
   const [title, setTitle] = useState('')
@@ -404,6 +511,11 @@ export default function TodosPage() {
 
   const handleIgnore = async (candidate) => {
     await ignore(candidate)
+    refreshTasks()
+  }
+
+  const handleDismissRecommendation = async (recommendation, reason) => {
+    await dismissRecommendation(recommendation, reason)
     refreshTasks()
   }
 
@@ -465,6 +577,15 @@ export default function TodosPage() {
         },
       ]
     }
+    const recommendation = recommendationsByTaskId[task.id]
+    if (recommendation) {
+      return [
+        {
+          label: 'Recommendation',
+          content: <FinanceRecommendationDetail recommendation={recommendation} onDismiss={handleDismissRecommendation} />,
+        },
+      ]
+    }
     return []
   }
 
@@ -475,10 +596,17 @@ export default function TodosPage() {
     if (subscription) return SUBSCRIPTION_STATUS_BADGES[subscription.status] || 'Unsubscribe'
     const candidate = candidatesByTaskId[task.id]
     if (candidate) return CANDIDATE_STATUS_BADGES[candidate.status] || 'Archive'
+    const recommendation = recommendationsByTaskId[task.id]
+    if (recommendation) {
+      if (recommendation.status === 'dismissed') return 'Dismissed'
+      return recommendation.estimated_monthly_savings != null
+        ? `Save ${currency.format(recommendation.estimated_monthly_savings)}/mo`
+        : 'Recommendation'
+    }
     return null
   }
 
-  if (loading || draftsLoading || subscriptionsLoading || candidatesLoading) return null
+  if (loading || draftsLoading || subscriptionsLoading || candidatesLoading || recommendationsLoading) return null
 
   const visibleTasks = tasks.filter((t) => isTaskVisible(t, completedFilter))
 

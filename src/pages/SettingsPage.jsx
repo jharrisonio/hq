@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom'
 import { useGmailConnection } from '../hooks/useGmailConnection'
 import { useTriageRules } from '../hooks/useTriageRules'
 import { useTriageOutcomes } from '../hooks/useTriageOutcomes'
+import { useFinanceRecommendationRules } from '../hooks/useFinanceRecommendationRules'
 import { startGmailConnect } from '../lib/gmailAuth'
 import { useToast } from '../components/ui/Toast'
 import Button from '../components/ui/Button'
@@ -176,6 +177,138 @@ function TriageRulesSection({ userId }) {
   )
 }
 
+function financeRuleScopeLabel(r) {
+  if (!r.match_type) return 'All recommendations'
+  return r.match_value
+}
+
+const FINANCE_KIND_OPTIONS = [
+  { value: '', label: 'Any kind' },
+  { value: 'cancel_subscription', label: 'Cancel subscription' },
+  { value: 'switch_provider', label: 'Switch provider' },
+  { value: 'spending_habit', label: 'Spending habit' },
+]
+
+function FinanceRulesSection({ userId }) {
+  const { rules, loading, addRule, deleteRule } = useFinanceRecommendationRules(userId)
+  const { showSuccess, showError } = useToast()
+  const [scope, setScope] = useState('general')
+  const [matchValue, setMatchValue] = useState('')
+  const [suppress, setSuppress] = useState(false)
+  const [guidance, setGuidance] = useState('')
+
+  const submit = async (e) => {
+    e.preventDefault()
+    if (scope !== 'general' && !matchValue.trim()) return
+    if (!suppress && !guidance.trim()) return
+    try {
+      await addRule({
+        matchType: scope === 'general' ? null : scope,
+        matchValue: scope === 'general' ? null : matchValue.trim(),
+        action: suppress ? 'suppress' : null,
+        guidance: guidance.trim() || null,
+      })
+      setMatchValue('')
+      setSuppress(false)
+      setGuidance('')
+      showSuccess('Rule added')
+    } catch (e) {
+      showError(e.message)
+    }
+  }
+
+  const handleDelete = async (id) => {
+    try {
+      await deleteRule(id)
+      showSuccess('Rule removed')
+    } catch (e) {
+      showError(e.message)
+    }
+  }
+
+  if (loading) return null
+
+  return (
+    <div className="max-w-md border border-gray-100 rounded-sm p-5 flex flex-col gap-4 mt-6">
+      <div>
+        <div className="text-[13px] font-medium">Finance recommendation rules</div>
+        <div className="text-[12px] text-gray-400 mt-0.5">
+          Read by the recommendation automation before suggesting a to-do — dismissing a recommendation with a
+          reason adds one of these automatically.
+        </div>
+      </div>
+
+      <form onSubmit={submit} className="flex flex-col gap-2">
+        <div className="flex gap-2">
+          <select
+            value={scope}
+            onChange={(e) => setScope(e.target.value)}
+            className="text-[12px] border border-gray-200 rounded-sm px-2 py-1.5"
+          >
+            <option value="general">All recommendations</option>
+            <option value="merchant">Specific merchant</option>
+            <option value="kind">Specific kind</option>
+          </select>
+          {scope === 'merchant' && (
+            <input
+              value={matchValue}
+              onChange={(e) => setMatchValue(e.target.value)}
+              placeholder="Rogers"
+              className="flex-1 text-[13px] border border-gray-200 rounded-sm px-3 py-1.5"
+            />
+          )}
+          {scope === 'kind' && (
+            <select
+              value={matchValue}
+              onChange={(e) => setMatchValue(e.target.value)}
+              className="flex-1 text-[12px] border border-gray-200 rounded-sm px-2 py-1.5"
+            >
+              {FINANCE_KIND_OPTIONS.filter((o) => o.value).map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+        <label className="flex items-center gap-1.5 text-[12px] text-gray-500">
+          <input type="checkbox" checked={suppress} onChange={(e) => setSuppress(e.target.checked)} />
+          Never suggest this again
+        </label>
+        <textarea
+          value={guidance}
+          onChange={(e) => setGuidance(e.target.value)}
+          placeholder="e.g. staying with Rogers — already checked competitors, their new plan matched the price"
+          rows={2}
+          className="text-[13px] border border-gray-200 rounded-sm px-3 py-1.5"
+        />
+        <Button type="submit" variant="secondary" className="self-start">
+          Add rule
+        </Button>
+      </form>
+
+      <div className="flex flex-col gap-1.5">
+        {rules.map((r) => (
+          <div key={r.id} className="flex items-start justify-between gap-2 py-1.5 border-t border-gray-100">
+            <div className="text-[12px] min-w-0">
+              <span className="font-medium">{financeRuleScopeLabel(r)}</span>
+              {r.action === 'suppress' && <span className="text-gray-400"> — never suggest again</span>}
+              {r.guidance && <div className="text-gray-400 mt-0.5">{r.guidance}</div>}
+            </div>
+            <button
+              onClick={() => handleDelete(r.id)}
+              className="text-gray-300 hover:text-black text-[12px] shrink-0"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+        {rules.length === 0 && <p className="text-[12px] text-gray-300">No rules yet.</p>}
+      </div>
+    </div>
+  )
+}
+
 export default function SettingsPage() {
   const { user } = useOutletContext()
   const { connected, updatedAt, loading, refresh } = useGmailConnection(user?.id)
@@ -225,6 +358,7 @@ export default function SettingsPage() {
 
       <TriageAccuracySection userId={user?.id} />
       <TriageRulesSection userId={user?.id} />
+      <FinanceRulesSection userId={user?.id} />
     </div>
   )
 }
