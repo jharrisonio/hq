@@ -33,3 +33,12 @@ To add type-specific content to the detail panel (e.g. the email draft controls 
 - This is a public GitHub repo. Never commit personal or sensitive data — seed content, real task data, credentials. Fixture/seed scripts containing real personal data should live outside the repo (e.g. a local scratch directory) and be applied straight to Supabase via the MCP connection or CLI, not shipped as app code.
 - Edge Functions (`supabase/functions/`) must set CORS headers and handle `OPTIONS` explicitly — browser calls via `supabase.functions.invoke()` fail preflight silently otherwise. Copy the pattern from an existing function rather than starting from a bare `Deno.serve`.
 - Pages render inside `AppShell` via `<Outlet context={{ user, projects, refreshProjects }} />` — pull these with `useOutletContext()` rather than re-fetching auth/projects state in every page.
+
+## Finance section
+
+Same division of labor as email triage: HQ does the mechanical, deterministic half; a Cowork scheduled task does the AI half.
+
+- `financial_accounts` / `transactions` / `transaction_category_rules` — see `supabase/migrations/20260721222240_finance.sql`. `transactions.amount` is signed: positive = charge/spend, negative = payment/credit, so `sum(amount)` (excluding a "Payment" category) is net spend with no sign-flipping needed.
+- HQ (`FinancePage.jsx`, `parseCibcCsv.js`, `useTransactions.js`) parses CSV exports client-side and inserts rows with `status='pending'`, `category`/`merchant`/`is_subscription` left unset. The `(account_id, txn_date, description, amount)` unique index makes re-uploading an overlapping export a no-op rather than a duplicate.
+- A Cowork scheduled task reads `pending` rows, normalizes the merchant name, assigns a category, flags subscriptions, and flips `status='categorized'` — mirroring `email_triage_rules`, `transaction_category_rules` lets corrections steer future runs via a hard `category` override or freeform `guidance`.
+- Realtime is on `transactions` so the categorization pass updates the UI live, same pattern as the email tables.
