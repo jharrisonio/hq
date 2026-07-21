@@ -8,6 +8,9 @@ import { useTriageRules } from '../hooks/useTriageRules'
 import { supabase } from '../lib/supabase'
 import { extractFunctionError } from '../lib/functionsError'
 import { useToast } from '../components/ui/Toast'
+import Popover from '../components/ui/Popover'
+import Modal from '../components/ui/Modal'
+import { PlusIcon, FilterIcon } from '../components/ui/icons'
 import TaskListView from '../components/tasks/TaskListView'
 import Button from '../components/ui/Button'
 
@@ -18,10 +21,10 @@ function draftGmailUrl(draft) {
 
 const COMPLETED_FILTER_KEY = 'hq-todos-completed-filter'
 const COMPLETED_FILTER_OPTIONS = [
-  { value: 'none', label: 'Hide completed' },
-  { value: 'day', label: 'Completed: last day' },
-  { value: 'week', label: 'Completed: last week' },
-  { value: 'all', label: 'Completed: all' },
+  { value: 'none', label: 'Hide completed', shortLabel: 'Hide completed' },
+  { value: 'day', label: 'Completed: last day', shortLabel: 'Last day' },
+  { value: 'week', label: 'Completed: last week', shortLabel: 'Last week' },
+  { value: 'all', label: 'Completed: all', shortLabel: 'All' },
 ]
 const COMPLETED_FILTER_WINDOW_MS = { day: 24 * 60 * 60 * 1000, week: 7 * 24 * 60 * 60 * 1000 }
 
@@ -356,6 +359,8 @@ export default function TodosPage() {
   const { addRule } = useTriageRules(user?.id)
   const { showError } = useToast()
   const [title, setTitle] = useState('')
+  const [dueDate, setDueDate] = useState('')
+  const [addModalOpen, setAddModalOpen] = useState(false)
   const [completedFilter, setCompletedFilter] = useState(
     () => localStorage.getItem(COMPLETED_FILTER_KEY) || 'none'
   )
@@ -410,8 +415,10 @@ export default function TodosPage() {
     e.preventDefault()
     if (!title.trim()) return
     try {
-      await addTask({ title: title.trim() })
+      await addTask({ title: title.trim(), due_date: dueDate || null })
       setTitle('')
+      setDueDate('')
+      setAddModalOpen(false)
     } catch (err) {
       showError(err.message)
     }
@@ -463,33 +470,79 @@ export default function TodosPage() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="px-6 py-3.5 border-b border-gray-100 shrink-0">
-        <div className="flex items-center justify-between mb-3">
-          <div className="text-[11px] font-medium uppercase tracking-widest text-black">Todos</div>
-          <select
-            value={completedFilter}
-            onChange={(e) => handleCompletedFilterChange(e.target.value)}
-            className="text-[11px] text-gray-500 border border-gray-200 rounded-sm px-2 py-1 cursor-pointer"
+      <div className="flex items-center justify-between px-6 py-3.5 border-b border-gray-100 shrink-0">
+        <div className="text-[11px] font-medium uppercase tracking-widest text-black">Todos</div>
+        <div className="flex items-center gap-2">
+          <Popover
+            trigger={(toggle) => (
+              <button
+                onClick={toggle}
+                className="flex items-center gap-1.5 text-[11px] text-gray-500 hover:text-black hover:border-gray-400 border border-gray-200 rounded-sm px-2 py-1"
+              >
+                <FilterIcon />
+                {COMPLETED_FILTER_OPTIONS.find((o) => o.value === completedFilter)?.shortLabel}
+              </button>
+            )}
           >
-            {COMPLETED_FILTER_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+            {(close) => (
+              <div className="flex flex-col">
+                {COMPLETED_FILTER_OPTIONS.map((o) => (
+                  <button
+                    key={o.value}
+                    onClick={() => {
+                      handleCompletedFilterChange(o.value)
+                      close()
+                    }}
+                    className={`text-left text-[12px] px-3 py-1.5 hover:bg-gray-50 ${
+                      o.value === completedFilter ? 'text-black font-medium' : 'text-gray-600'
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </Popover>
+          <button
+            onClick={() => setAddModalOpen(true)}
+            className="flex items-center justify-center w-[26px] h-[26px] border border-gray-200 rounded-sm text-gray-500 hover:text-black hover:border-gray-400"
+          >
+            <PlusIcon />
+          </button>
         </div>
-        <form onSubmit={submit} className="flex gap-2 max-w-xl">
+      </div>
+
+      <Modal open={addModalOpen} onClose={() => setAddModalOpen(false)}>
+        <form onSubmit={submit} className="flex flex-col gap-3">
+          <div className="text-[13px] font-medium">New Todo</div>
           <input
+            autoFocus
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Add a todo…"
-            className="flex-1 text-[13px] border border-gray-200 rounded-sm px-3 py-1.5"
+            placeholder="Title"
+            className="text-[13px] border border-gray-200 rounded-sm px-3 py-1.5"
           />
-          <Button type="submit" variant="secondary">
-            Add
-          </Button>
+          <div className="flex items-center gap-2.5">
+            <span className="text-[9px] font-semibold uppercase tracking-wider text-gray-300 w-[72px] shrink-0">
+              Due Date
+            </span>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="text-[12px] border border-gray-200 rounded-sm px-2 py-1"
+            />
+          </div>
+          <div className="flex justify-end gap-2 mt-1">
+            <Button type="button" variant="ghost" onClick={() => setAddModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary">
+              Add
+            </Button>
+          </div>
         </form>
-      </div>
+      </Modal>
 
       <TaskListView
         sections={[{ label: 'Todos', tasks: visibleTasks, expandable: true }]}
