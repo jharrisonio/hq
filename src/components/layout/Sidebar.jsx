@@ -43,6 +43,9 @@ export default function Sidebar({ projects, user, onSignOut }) {
           <NavLink to="/crm" className={navLinkClass}>
             CRM
           </NavLink>
+          <NavLink to="/finance" className={navLinkClass}>
+            Finance
+          </NavLink>
           <NavLink to="/settings" className={navLinkClass}>
             Settings
           </NavLink>
