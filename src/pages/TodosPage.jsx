@@ -16,6 +16,24 @@ function draftGmailUrl(draft) {
   return `https://mail.google.com/mail/u/0/#all/${draft.thread_id}`
 }
 
+const COMPLETED_FILTER_KEY = 'hq-todos-completed-filter'
+const COMPLETED_FILTER_OPTIONS = [
+  { value: 'none', label: 'Hide completed' },
+  { value: 'day', label: 'Completed: last day' },
+  { value: 'week', label: 'Completed: last week' },
+  { value: 'all', label: 'Completed: all' },
+]
+const COMPLETED_FILTER_WINDOW_MS = { day: 24 * 60 * 60 * 1000, week: 7 * 24 * 60 * 60 * 1000 }
+
+function isTaskVisible(task, completedFilter) {
+  if (task.status !== 'done') return true
+  if (completedFilter === 'none') return false
+  if (completedFilter === 'all') return true
+  if (!task.completedAt) return true
+  const windowMs = COMPLETED_FILTER_WINDOW_MS[completedFilter]
+  return Date.now() - new Date(task.completedAt).getTime() <= windowMs
+}
+
 function formatEmailDate(dateHeader) {
   if (!dateHeader) return ''
   const d = new Date(dateHeader)
@@ -338,6 +356,14 @@ export default function TodosPage() {
   const { addRule } = useTriageRules(user?.id)
   const { showError } = useToast()
   const [title, setTitle] = useState('')
+  const [completedFilter, setCompletedFilter] = useState(
+    () => localStorage.getItem(COMPLETED_FILTER_KEY) || 'none'
+  )
+
+  const handleCompletedFilterChange = (value) => {
+    setCompletedFilter(value)
+    localStorage.setItem(COMPLETED_FILTER_KEY, value)
+  }
 
   // Every action here marks its linked todo done server-side (or in the hook
   // itself for dismiss/ignore) — refresh so the strikethrough shows without
@@ -433,10 +459,25 @@ export default function TodosPage() {
 
   if (loading || draftsLoading || subscriptionsLoading || candidatesLoading) return null
 
+  const visibleTasks = tasks.filter((t) => isTaskVisible(t, completedFilter))
+
   return (
     <div className="h-full flex flex-col">
       <div className="px-6 py-3.5 border-b border-gray-100 shrink-0">
-        <div className="text-[11px] font-medium uppercase tracking-widest text-black mb-3">Todos</div>
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-[11px] font-medium uppercase tracking-widest text-black">Todos</div>
+          <select
+            value={completedFilter}
+            onChange={(e) => handleCompletedFilterChange(e.target.value)}
+            className="text-[11px] text-gray-500 border border-gray-200 rounded-sm px-2 py-1 cursor-pointer"
+          >
+            {COMPLETED_FILTER_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
         <form onSubmit={submit} className="flex gap-2 max-w-xl">
           <input
             value={title}
@@ -451,7 +492,7 @@ export default function TodosPage() {
       </div>
 
       <TaskListView
-        sections={[{ label: 'Todos', tasks, expandable: true }]}
+        sections={[{ label: 'Todos', tasks: visibleTasks, expandable: true }]}
         getTask={getTask}
         onUpdateStatus={updateStatus}
         onUpdateDueDate={updateDueDate}

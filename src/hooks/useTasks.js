@@ -29,6 +29,7 @@ function assembleTask(row, allRows, linkRows, relRows) {
     type: row.type,
     title: row.title,
     status: row.status,
+    completedAt: row.completed_at,
     assignee: row.assignee,
     dueDate: row.due_date,
     description: row.description,
@@ -88,7 +89,8 @@ export function useTasks(userId, projectId) {
   const getTask = (id) => tasks.find((t) => t.id === id)
 
   const updateStatus = async (id, status) => {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)))
+    const completedAt = status === 'done' ? new Date().toISOString() : null
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status, completedAt } : t)))
     const { error } = await supabase
       .from('tasks')
       .update({ status, updated_at: new Date().toISOString() })
