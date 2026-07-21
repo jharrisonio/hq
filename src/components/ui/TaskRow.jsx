@@ -13,7 +13,7 @@ function isOverdue(d) {
   return new Date(d + 'T23:59:59') < new Date()
 }
 
-export default function TaskRow({ task, isChild, isActive, isExpanded, onSelect, onToggleExpand }) {
+export default function TaskRow({ task, isChild, isActive, isExpanded, onSelect, onToggleExpand, badge }) {
   const hasChildren = task.children && task.children.length > 0
   const dueFmt = formatDate(task.dueDate)
   const overdue = isOverdue(task.dueDate)
@@ -55,6 +55,11 @@ export default function TaskRow({ task, isChild, isActive, isExpanded, onSelect,
         {dueFmt && (
           <span className={`text-[10px] tracking-wide ${overdue ? 'text-black font-semibold' : 'text-gray-400'}`}>
             {dueFmt}
+          </span>
+        )}
+        {badge && (
+          <span className="text-[9px] font-medium uppercase tracking-wider text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded-sm">
+            {badge}
           </span>
         )}
         {task.assignee && (

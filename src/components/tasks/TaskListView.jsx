@@ -23,6 +23,7 @@ export default function TaskListView({
   onUpdateDueDate,
   onDeleteTask,
   getExtraSections,
+  getRowBadge,
 }) {
   const [selectedId, setSelectedId] = useState(null)
   const [expanded, setExpanded] = useState(new Set())
@@ -82,6 +83,7 @@ export default function TaskListView({
       isExpanded={expanded.has(t.id)}
       onSelect={setSelectedId}
       onToggleExpand={toggleExpand}
+      badge={getRowBadge ? getRowBadge(t) : null}
     />
   )
 

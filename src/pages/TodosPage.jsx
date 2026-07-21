@@ -28,6 +28,10 @@ const COMPLETED_FILTER_OPTIONS = [
 ]
 const COMPLETED_FILTER_WINDOW_MS = { day: 24 * 60 * 60 * 1000, week: 7 * 24 * 60 * 60 * 1000 }
 
+const DRAFT_STATUS_BADGES = { sent: 'Sent', rejected: 'Not needed', failed: 'Reply failed' }
+const SUBSCRIPTION_STATUS_BADGES = { unsubscribed: 'Unsubscribed', dismissed: 'Kept', failed: 'Failed' }
+const CANDIDATE_STATUS_BADGES = { archived: 'Archived', ignored: 'Ignored', failed: 'Failed' }
+
 function isTaskVisible(task, completedFilter) {
   if (task.status !== 'done') return true
   if (completedFilter === 'none') return false
@@ -464,6 +468,16 @@ export default function TodosPage() {
     return []
   }
 
+  const getRowBadge = (task) => {
+    const draft = draftsByTaskId[task.id]
+    if (draft) return DRAFT_STATUS_BADGES[draft.status] || 'Reply'
+    const subscription = subscriptionsByTaskId[task.id]
+    if (subscription) return SUBSCRIPTION_STATUS_BADGES[subscription.status] || 'Unsubscribe'
+    const candidate = candidatesByTaskId[task.id]
+    if (candidate) return CANDIDATE_STATUS_BADGES[candidate.status] || 'Archive'
+    return null
+  }
+
   if (loading || draftsLoading || subscriptionsLoading || candidatesLoading) return null
 
   const visibleTasks = tasks.filter((t) => isTaskVisible(t, completedFilter))
@@ -551,6 +565,7 @@ export default function TodosPage() {
         onUpdateDueDate={updateDueDate}
         onDeleteTask={deleteTask}
         getExtraSections={getExtraSections}
+        getRowBadge={getRowBadge}
       />
     </div>
   )
