@@ -7,6 +7,7 @@ import { useEmailArchiveCandidates } from '../hooks/useEmailArchiveCandidates'
 import { useTriageRules } from '../hooks/useTriageRules'
 import { useFinanceRecommendations } from '../hooks/useFinanceRecommendations'
 import { supabase } from '../lib/supabase'
+import { currency } from '../lib/currency'
 import { extractFunctionError } from '../lib/functionsError'
 import { useToast } from '../components/ui/Toast'
 import Popover from '../components/ui/Popover'
@@ -33,7 +34,6 @@ const DRAFT_STATUS_BADGES = { sent: 'Sent', rejected: 'Not needed', failed: 'Rep
 const SUBSCRIPTION_STATUS_BADGES = { unsubscribed: 'Unsubscribed', dismissed: 'Kept', failed: 'Failed' }
 const CANDIDATE_STATUS_BADGES = { archived: 'Archived', ignored: 'Ignored', failed: 'Failed' }
 
-const currency = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' })
 const RECOMMENDATION_KIND_LABELS = {
   cancel_subscription: 'Cancel Subscription',
   switch_provider: 'Switch Provider',

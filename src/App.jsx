@@ -8,7 +8,8 @@ import TodosPage from './pages/TodosPage'
 import ApartmentPage from './pages/ApartmentPage'
 import CRMPage from './pages/crm/CRMPage'
 import ContactDetail from './pages/crm/ContactDetail'
-import FinancePage from './pages/FinancePage'
+import FinanceDashboard from './pages/finance/FinanceDashboard'
+import FinanceTransactions from './pages/finance/FinanceTransactions'
 import GmailCallback from './pages/GmailCallback'
 import SettingsPage from './pages/SettingsPage'
 
@@ -30,7 +31,8 @@ export default function App() {
             <Route path="/apartment" element={<ApartmentPage />} />
             <Route path="/crm" element={<CRMPage />} />
             <Route path="/crm/:contactId" element={<ContactDetail />} />
-            <Route path="/finance" element={<FinancePage />} />
+            <Route path="/finance" element={<FinanceDashboard />} />
+            <Route path="/finance/transactions" element={<FinanceTransactions />} />
             <Route path="/auth/gmail-callback" element={<GmailCallback />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
