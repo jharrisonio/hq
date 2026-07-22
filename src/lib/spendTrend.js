@@ -2,10 +2,11 @@
 // per bucket (not total spend) — so a month bar is comparable to a day bar
 // instead of just being bigger because it spans more days.
 
-// Any single transaction over this is treated as a one-off (a holiday, a
+// Any single transaction over the outlier threshold (user-configurable in
+// Settings, see useFinanceSettings) is treated as a one-off (a holiday, a
 // big purchase) rather than routine daily spend, and excluded from the
 // "adjusted" average alongside the unfiltered "all" average.
-export const OUTLIER_THRESHOLD = 300
+export const DEFAULT_OUTLIER_THRESHOLD = 300
 
 function dateOnly(d) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate())
@@ -41,7 +42,7 @@ function periodBounds(transactions, period) {
   return { start, end }
 }
 
-export function computeSpendTrend(transactions, period, granularity) {
+export function computeSpendTrend(transactions, period, granularity, outlierThreshold = DEFAULT_OUTLIER_THRESHOLD) {
   const spend = transactions.filter((t) => t.amount > 0)
   const { start: periodStart, end: periodEnd } = periodBounds(spend, period)
   if (periodEnd < periodStart) return []
@@ -75,7 +76,7 @@ export function computeSpendTrend(transactions, period, granularity) {
     if (!buckets.has(key)) buckets.set(key, { total: 0, adjustedTotal: 0, start: clippedStart, end: clippedEnd })
     const bucket = buckets.get(key)
     bucket.total += t.amount
-    if (t.amount <= OUTLIER_THRESHOLD) bucket.adjustedTotal += t.amount
+    if (t.amount <= outlierThreshold) bucket.adjustedTotal += t.amount
   })
 
   return Array.from(buckets.entries())

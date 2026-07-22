@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { computeSpendTrend, OUTLIER_THRESHOLD } from '../../lib/spendTrend'
+import { computeSpendTrend } from '../../lib/spendTrend'
 import { currency } from '../../lib/currency'
 
 const GRANULARITIES = [
@@ -40,11 +40,14 @@ function Swatch({ className }) {
   return <span className={`inline-block w-2 h-2 rounded-sm mr-1 align-middle ${className}`} />
 }
 
-export default function SpendTrendChart({ transactions, period }) {
+export default function SpendTrendChart({ transactions, period, outlierThreshold }) {
   const [granularity, setGranularity] = useState('day')
   const [hoveredKey, setHoveredKey] = useState(null)
 
-  const buckets = useMemo(() => computeSpendTrend(transactions, period, granularity), [transactions, period, granularity])
+  const buckets = useMemo(
+    () => computeSpendTrend(transactions, period, granularity, outlierThreshold),
+    [transactions, period, granularity, outlierThreshold]
+  )
   const max = useMemo(() => niceMax(Math.max(...buckets.map((b) => b.average), 0)), [buckets])
   const hovered = buckets.find((b) => b.key === hoveredKey) || null
 
@@ -82,7 +85,7 @@ export default function SpendTrendChart({ transactions, period }) {
             </span>
             <span className="text-gray-500">
               <Swatch className="bg-gray-700" />
-              Excl. outliers (&gt;{currency.format(OUTLIER_THRESHOLD)})
+              Excl. outliers (&gt;{currency.format(outlierThreshold)})
               {hovered && (
                 <span className="text-black font-medium tabular-nums">
                   {' '}

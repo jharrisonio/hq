@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { useGmailConnection } from '../hooks/useGmailConnection'
 import { useTriageRules } from '../hooks/useTriageRules'
 import { useTriageOutcomes } from '../hooks/useTriageOutcomes'
 import { useFinanceRecommendationRules } from '../hooks/useFinanceRecommendationRules'
+import { useFinanceSettings } from '../hooks/useFinanceSettings'
 import { startGmailConnect } from '../lib/gmailAuth'
 import { useToast } from '../components/ui/Toast'
 import Button from '../components/ui/Button'
@@ -309,6 +310,61 @@ function FinanceRulesSection({ userId }) {
   )
 }
 
+function FinanceThresholdSection({ userId }) {
+  const { outlierThreshold, loading, updateOutlierThreshold } = useFinanceSettings(userId)
+  const { showSuccess, showError } = useToast()
+  const [value, setValue] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!loading) setValue(String(outlierThreshold))
+  }, [loading, outlierThreshold])
+
+  const submit = async (e) => {
+    e.preventDefault()
+    const parsed = Number(value)
+    if (!Number.isFinite(parsed) || parsed <= 0) return
+    setSaving(true)
+    try {
+      await updateOutlierThreshold(parsed)
+      showSuccess('Saved')
+    } catch (e) {
+      showError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) return null
+
+  return (
+    <div className="max-w-md border border-gray-100 rounded-sm p-5 flex flex-col gap-4 mt-6">
+      <div>
+        <div className="text-[13px] font-medium">Spend outlier threshold</div>
+        <div className="text-[12px] text-gray-400 mt-0.5">
+          Transactions above this are treated as one-off purchases (a holiday, a big buy) rather than routine daily
+          spend, and excluded from the "excl. outliers" line on the Finance dashboard's spend trend chart.
+        </div>
+      </div>
+
+      <form onSubmit={submit} className="flex items-center gap-2">
+        <span className="text-[13px] text-gray-400">$</span>
+        <input
+          type="number"
+          min="0"
+          step="1"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="w-[100px] text-[13px] border border-gray-200 rounded-sm px-3 py-1.5"
+        />
+        <Button type="submit" variant="secondary" disabled={saving}>
+          {saving ? 'Saving…' : 'Save'}
+        </Button>
+      </form>
+    </div>
+  )
+}
+
 export default function SettingsPage() {
   const { user } = useOutletContext()
   const { connected, updatedAt, loading, refresh } = useGmailConnection(user?.id)
@@ -359,6 +415,7 @@ export default function SettingsPage() {
       <TriageAccuracySection userId={user?.id} />
       <TriageRulesSection userId={user?.id} />
       <FinanceRulesSection userId={user?.id} />
+      <FinanceThresholdSection userId={user?.id} />
     </div>
   )
 }
