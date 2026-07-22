@@ -19,12 +19,19 @@ function formatDate(dateStr) {
   return Number.isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })
 }
 
-function TransactionRow({ t, isActive, isSelected, onSelect, onToggleSelect }) {
+function TransactionRow({ t, index, isActive, isSelected, onSelect, onToggleSelect, onRangeSelect }) {
   const isCredit = t.amount < 0
+
+  const handleClick = (e) => {
+    if (e.shiftKey) onRangeSelect(index)
+    else if (e.metaKey || e.ctrlKey) onToggleSelect(t.id, index)
+    else onSelect(t.id)
+  }
+
   return (
     <div
-      onClick={() => onSelect(t.id)}
-      className={`flex items-center gap-3 px-6 py-2.5 cursor-pointer border-b border-gray-50 border-l-2 transition-colors hover:bg-gray-50 last:border-b-0 ${
+      onClick={handleClick}
+      className={`flex items-center gap-3 h-9 px-6 cursor-pointer select-none border-b border-gray-50 border-l-2 transition-colors hover:bg-gray-50 last:border-b-0 ${
         isActive ? 'border-l-black bg-gray-50' : 'border-l-transparent'
       }`}
     >
@@ -32,14 +39,14 @@ function TransactionRow({ t, isActive, isSelected, onSelect, onToggleSelect }) {
         type="checkbox"
         checked={isSelected}
         onClick={(e) => e.stopPropagation()}
-        onChange={() => onToggleSelect(t.id)}
+        onChange={() => onToggleSelect(t.id, index)}
         className="shrink-0"
       />
       <div className="w-[56px] shrink-0 text-[11px] text-gray-400 tabular-nums">{formatDate(t.txn_date)}</div>
-      <div className="flex-1 min-w-0">
-        <div className="text-[12.5px] text-gray-700 truncate">{t.merchant || t.description}</div>
+      <div className="flex-1 min-w-0 flex items-baseline gap-2">
+        <span className="text-[12.5px] text-gray-700 truncate min-w-0">{t.merchant || t.description}</span>
         {t.merchant && t.merchant !== t.description && (
-          <div className="text-[10.5px] text-gray-400 truncate">{t.description}</div>
+          <span className="text-[10.5px] text-gray-400 truncate shrink-0 max-w-[160px]">{t.description}</span>
         )}
       </div>
       {t.status === 'pending' ? (
@@ -149,28 +156,36 @@ function BulkActionBar({ count, visibleCount, onSelectAllVisible, onApply, onCle
   }
 
   return (
-    <div className="flex items-center gap-3 px-6 py-2.5 border-b border-gray-100 bg-gray-50 shrink-0">
-      <span className="text-[12px] text-gray-600">{count} selected</span>
+    <div className="flex items-center gap-3 h-11 px-6 border-b border-gray-100 bg-gray-50 shrink-0">
+      <span className="text-[12px] font-medium text-black tabular-nums">{count} selected</span>
       {count < visibleCount && (
-        <button onClick={onSelectAllVisible} className="text-[11px] text-gray-400 hover:text-black">
+        <button
+          onClick={onSelectAllVisible}
+          className="text-[11px] text-gray-400 hover:text-black underline underline-offset-2"
+        >
           Select all {visibleCount}
         </button>
       )}
+
+      <div className="w-px h-4 bg-gray-200" />
+
+      <span className="text-[11px] text-gray-400">Set category</span>
       <select
         value={bulkCategory}
         onChange={(e) => setBulkCategory(e.target.value)}
-        className="text-[12px] border border-gray-200 rounded-sm px-2 py-1"
+        className="text-[12px] border border-gray-200 rounded-sm px-2 py-1 bg-white"
       >
-        <option value="">Choose category…</option>
+        <option value="">Choose…</option>
         {FINANCE_CATEGORIES.map((c) => (
           <option key={c} value={c}>
             {c}
           </option>
         ))}
       </select>
-      <Button variant="secondary" onClick={handleApply} disabled={!bulkCategory || applying}>
+      <Button variant="primary" onClick={handleApply} disabled={!bulkCategory || applying} className="text-[12px] py-1">
         {applying ? 'Applying…' : 'Apply'}
       </Button>
+
       <button onClick={onClear} className="ml-auto text-[11px] text-gray-400 hover:text-black">
         Clear selection
       </button>
@@ -192,6 +207,7 @@ export default function FinanceTransactions() {
   const [importing, setImporting] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
   const [selectedIds, setSelectedIds] = useState(new Set())
+  const [lastSelectedIndex, setLastSelectedIndex] = useState(null)
   const [bulkApplying, setBulkApplying] = useState(false)
   const [search, setSearch] = useState('')
   const [period, setPeriod] = useState('all')
@@ -263,12 +279,28 @@ export default function FinanceTransactions() {
     }
   }
 
-  const toggleSelect = (id) => {
+  // Plain click opens the detail panel (onSelect). Cmd/Ctrl-click toggles
+  // one row in/out of the bulk selection and sets the shift-click anchor.
+  // Shift-click extends the selection from that anchor to the clicked row,
+  // Finder/Gmail-style.
+  const toggleSelect = (id, index) => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)
       return next
     })
+    if (index !== undefined) setLastSelectedIndex(index)
+  }
+
+  const rangeSelect = (index) => {
+    if (lastSelectedIndex === null) {
+      toggleSelect(filteredTransactions[index].id, index)
+      return
+    }
+    const [start, end] = [lastSelectedIndex, index].sort((a, b) => a - b)
+    const rangeIds = filteredTransactions.slice(start, end + 1).map((t) => t.id)
+    setSelectedIds((prev) => new Set([...prev, ...rangeIds]))
+    setLastSelectedIndex(index)
   }
 
   const selectAllVisible = () => {
@@ -341,7 +373,10 @@ export default function FinanceTransactions() {
           visibleCount={filteredTransactions.length}
           onSelectAllVisible={selectAllVisible}
           onApply={handleBulkApply}
-          onClear={() => setSelectedIds(new Set())}
+          onClear={() => {
+            setSelectedIds(new Set())
+            setLastSelectedIndex(null)
+          }}
           applying={bulkApplying}
         />
       )}
@@ -355,14 +390,16 @@ export default function FinanceTransactions() {
           ) : filteredTransactions.length === 0 ? (
             <div className="px-6 py-10 text-[13px] text-gray-300">No transactions match these filters.</div>
           ) : (
-            filteredTransactions.map((t) => (
+            filteredTransactions.map((t, index) => (
               <TransactionRow
                 key={t.id}
                 t={t}
+                index={index}
                 isActive={t.id === selectedId}
                 isSelected={selectedIds.has(t.id)}
                 onSelect={setSelectedId}
                 onToggleSelect={toggleSelect}
+                onRangeSelect={rangeSelect}
               />
             ))
           )}
