@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { extractFunctionError } from '../lib/functionsError'
 import { useToast } from '../components/ui/Toast'
+import { gmailCallbackRedirectUri } from '../lib/gmailAuth'
 
 export default function GmailCallback() {
   const navigate = useNavigate()
@@ -26,7 +27,7 @@ export default function GmailCallback() {
     }
 
     supabase.functions
-      .invoke('exchange-google-code', { body: { code } })
+      .invoke('exchange-google-code', { body: { code, redirect_uri: gmailCallbackRedirectUri() } })
       .then(async ({ data, error }) => {
         if (error || data?.error) {
           showError(`Failed to connect Gmail: ${data?.error || (await extractFunctionError(error))}`)

@@ -3,7 +3,6 @@ import { createClient } from "jsr:@supabase/supabase-js@2"
 
 const CLIENT_ID = Deno.env.get("GOOGLE_GMAIL_CLIENT_ID")!
 const CLIENT_SECRET = Deno.env.get("GOOGLE_GMAIL_CLIENT_SECRET")!
-const REDIRECT_URI = Deno.env.get("GOOGLE_GMAIL_REDIRECT_URI")!
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -39,9 +38,12 @@ Deno.serve(async (req: Request) => {
     }
     const userId = userData.user.id
 
-    const { code } = await req.json()
+    const { code, redirect_uri } = await req.json()
     if (!code) {
       return json({ error: "Missing code" }, 400)
+    }
+    if (!redirect_uri) {
+      return json({ error: "Missing redirect_uri" }, 400)
     }
 
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -51,7 +53,7 @@ Deno.serve(async (req: Request) => {
         code,
         client_id: CLIENT_ID,
         client_secret: CLIENT_SECRET,
-        redirect_uri: REDIRECT_URI,
+        redirect_uri,
         grant_type: "authorization_code",
       }),
     })
