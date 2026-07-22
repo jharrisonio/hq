@@ -178,6 +178,8 @@ export default function FinanceTransactions() {
     return rows
   }, [transactions, period, category, minAmount, maxAmount, search])
 
+  const filteredTotal = filteredTransactions.reduce((sum, t) => sum + t.amount, 0)
+
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0]
     e.target.value = ''
@@ -241,6 +243,13 @@ export default function FinanceTransactions() {
             Clear filters
           </button>
         )}
+        <div className="ml-auto text-[12px] text-gray-500 tabular-nums shrink-0">
+          {filteredTransactions.length} transaction{filteredTransactions.length === 1 ? '' : 's'} ·{' '}
+          <span className={filteredTotal < 0 ? 'text-gray-500' : 'text-black font-medium'}>
+            {filteredTotal < 0 ? '−' : ''}
+            {currency.format(Math.abs(filteredTotal))}
+          </span>
+        </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
