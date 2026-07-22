@@ -7,12 +7,12 @@ const tabClass = ({ isActive }) =>
 
 export default function FinanceHeader({ right }) {
   return (
-    <div className="shrink-0">
-      <div className="flex items-center justify-between px-6 py-3.5 border-b border-gray-100">
+    <div className="shrink-0 border-b border-gray-100">
+      <div className="flex items-center justify-between px-6 py-3.5">
         <div className="text-[11px] font-medium uppercase tracking-widest text-black">Finance</div>
         {right}
       </div>
-      <div className="flex items-center gap-5 px-6 border-b border-gray-100">
+      <div className="flex items-center gap-5 px-6 pt-1">
         <NavLink to="/finance" end className={tabClass}>
           Dashboard
         </NavLink>

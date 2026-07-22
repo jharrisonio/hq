@@ -1,4 +1,5 @@
 import { currency } from '../../lib/currency'
+import { FINANCE_CATEGORIES } from '../../lib/financeCategories'
 
 const SIMILAR_TRANSACTIONS_LIMIT = 8
 
@@ -32,7 +33,7 @@ function findSimilarTransactions(transaction, allTransactions) {
     .sort((a, b) => (a.txn_date < b.txn_date ? 1 : -1))
 }
 
-export default function TransactionDetailPanel({ transaction, allTransactions, onClose, onSelect }) {
+export default function TransactionDetailPanel({ transaction, allTransactions, onClose, onSelect, onUpdateCategory }) {
   if (!transaction) return null
 
   const isCredit = transaction.amount < 0
@@ -70,12 +71,24 @@ export default function TransactionDetailPanel({ transaction, allTransactions, o
           <span className="text-[9px] font-semibold uppercase tracking-wider text-gray-300 w-[72px] shrink-0">
             Category
           </span>
-          {transaction.status === 'pending' ? (
-            <span className="text-[10px] font-medium uppercase tracking-wider text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded-sm">
+          <select
+            value={transaction.category || ''}
+            onChange={(e) => onUpdateCategory(transaction.id, e.target.value)}
+            className="text-[12px] border border-gray-200 rounded-sm px-2 py-1 bg-white cursor-pointer"
+          >
+            <option value="" disabled>
+              Uncategorized
+            </option>
+            {FINANCE_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          {transaction.status === 'pending' && (
+            <span className="text-[9px] font-medium uppercase tracking-wider text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded-sm">
               Pending
             </span>
-          ) : (
-            <span className="text-[13px] text-gray-600">{transaction.category || 'Uncategorized'}</span>
           )}
         </div>
       </div>

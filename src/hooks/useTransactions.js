@@ -71,5 +71,11 @@ export function useTransactions(userId) {
     return { inserted: data.length, skipped: parsedRows.length - data.length }
   }
 
-  return { transactions, loading, importTransactions, refresh: load }
+  const updateTransaction = async (id, fields) => {
+    const { error } = await supabase.from('transactions').update(fields).eq('id', id)
+    if (error) throw error
+    await load()
+  }
+
+  return { transactions, loading, importTransactions, updateTransaction, refresh: load }
 }
