@@ -5,6 +5,7 @@ import { useTransactions } from '../../hooks/useTransactions'
 import { parseCibcCsv } from '../../lib/parseCibcCsv'
 import { currency } from '../../lib/currency'
 import { filterByPeriod } from '../../lib/periods'
+import { FINANCE_CATEGORIES } from '../../lib/financeCategories'
 import { useToast } from '../../components/ui/Toast'
 import Button from '../../components/ui/Button'
 import Popover from '../../components/ui/Popover'
@@ -18,7 +19,7 @@ function formatDate(dateStr) {
   return Number.isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })
 }
 
-function TransactionRow({ t, isActive, onSelect }) {
+function TransactionRow({ t, isActive, isSelected, onSelect, onToggleSelect }) {
   const isCredit = t.amount < 0
   return (
     <div
@@ -27,6 +28,13 @@ function TransactionRow({ t, isActive, onSelect }) {
         isActive ? 'border-l-black bg-gray-50' : 'border-l-transparent'
       }`}
     >
+      <input
+        type="checkbox"
+        checked={isSelected}
+        onClick={(e) => e.stopPropagation()}
+        onChange={() => onToggleSelect(t.id)}
+        className="shrink-0"
+      />
       <div className="w-[56px] shrink-0 text-[11px] text-gray-400 tabular-nums">{formatDate(t.txn_date)}</div>
       <div className="flex-1 min-w-0">
         <div className="text-[12.5px] text-gray-700 truncate">{t.merchant || t.description}</div>
@@ -131,6 +139,45 @@ function AmountFilter({ min, max, onChange }) {
   )
 }
 
+function BulkActionBar({ count, visibleCount, onSelectAllVisible, onApply, onClear, applying }) {
+  const [bulkCategory, setBulkCategory] = useState('')
+
+  const handleApply = async () => {
+    if (!bulkCategory) return
+    await onApply(bulkCategory)
+    setBulkCategory('')
+  }
+
+  return (
+    <div className="flex items-center gap-3 px-6 py-2.5 border-b border-gray-100 bg-gray-50 shrink-0">
+      <span className="text-[12px] text-gray-600">{count} selected</span>
+      {count < visibleCount && (
+        <button onClick={onSelectAllVisible} className="text-[11px] text-gray-400 hover:text-black">
+          Select all {visibleCount}
+        </button>
+      )}
+      <select
+        value={bulkCategory}
+        onChange={(e) => setBulkCategory(e.target.value)}
+        className="text-[12px] border border-gray-200 rounded-sm px-2 py-1"
+      >
+        <option value="">Choose category…</option>
+        {FINANCE_CATEGORIES.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+      </select>
+      <Button variant="secondary" onClick={handleApply} disabled={!bulkCategory || applying}>
+        {applying ? 'Applying…' : 'Apply'}
+      </Button>
+      <button onClick={onClear} className="ml-auto text-[11px] text-gray-400 hover:text-black">
+        Clear selection
+      </button>
+    </div>
+  )
+}
+
 export default function FinanceTransactions() {
   const { user } = useOutletContext()
   const { accounts, loading: accountsLoading } = useFinancialAccounts(user?.id)
@@ -139,10 +186,13 @@ export default function FinanceTransactions() {
     loading: transactionsLoading,
     importTransactions,
     updateTransaction,
+    bulkUpdateCategory,
   } = useTransactions(user?.id)
   const { showSuccess, showError } = useToast()
   const [importing, setImporting] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
+  const [selectedIds, setSelectedIds] = useState(new Set())
+  const [bulkApplying, setBulkApplying] = useState(false)
   const [search, setSearch] = useState('')
   const [period, setPeriod] = useState('all')
   const [category, setCategory] = useState('all')
@@ -213,6 +263,32 @@ export default function FinanceTransactions() {
     }
   }
 
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const selectAllVisible = () => {
+    setSelectedIds((prev) => new Set([...prev, ...filteredTransactions.map((t) => t.id)]))
+  }
+
+  const handleBulkApply = async (bulkCategory) => {
+    setBulkApplying(true)
+    try {
+      const ids = Array.from(selectedIds)
+      await bulkUpdateCategory(ids, bulkCategory)
+      showSuccess(`Categorized ${ids.length} transaction${ids.length === 1 ? '' : 's'} as ${bulkCategory}`)
+      setSelectedIds(new Set())
+    } catch (err) {
+      showError(err.message)
+    } finally {
+      setBulkApplying(false)
+    }
+  }
+
   if (accountsLoading || transactionsLoading) return null
 
   return (
@@ -259,6 +335,17 @@ export default function FinanceTransactions() {
         </div>
       </div>
 
+      {selectedIds.size > 0 && (
+        <BulkActionBar
+          count={selectedIds.size}
+          visibleCount={filteredTransactions.length}
+          onSelectAllVisible={selectAllVisible}
+          onApply={handleBulkApply}
+          onClear={() => setSelectedIds(new Set())}
+          applying={bulkApplying}
+        />
+      )}
+
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 overflow-y-auto min-w-0">
           {transactions.length === 0 ? (
@@ -269,7 +356,14 @@ export default function FinanceTransactions() {
             <div className="px-6 py-10 text-[13px] text-gray-300">No transactions match these filters.</div>
           ) : (
             filteredTransactions.map((t) => (
-              <TransactionRow key={t.id} t={t} isActive={t.id === selectedId} onSelect={setSelectedId} />
+              <TransactionRow
+                key={t.id}
+                t={t}
+                isActive={t.id === selectedId}
+                isSelected={selectedIds.has(t.id)}
+                onSelect={setSelectedId}
+                onToggleSelect={toggleSelect}
+              />
             ))
           )}
         </div>
