@@ -38,8 +38,16 @@ function TransactionRow({ t, index, isActive, isSelected, onSelect, onToggleSele
       <input
         type="checkbox"
         checked={isSelected}
-        onClick={(e) => e.stopPropagation()}
-        onChange={() => onToggleSelect(t.id, index)}
+        onClick={(e) => {
+          // Handle shift/toggle here instead of just stopping propagation —
+          // otherwise a shift-click landing on the checkbox itself never
+          // reaches handleClick's modifier-key check below.
+          e.stopPropagation()
+          e.preventDefault()
+          if (e.shiftKey) onRangeSelect(index)
+          else onToggleSelect(t.id, index)
+        }}
+        readOnly
         className="shrink-0"
       />
       <div className="w-[56px] shrink-0 text-[11px] text-gray-400 tabular-nums">{formatDate(t.txn_date)}</div>
