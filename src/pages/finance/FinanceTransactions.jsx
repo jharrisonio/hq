@@ -1,5 +1,5 @@
 import { useOutletContext } from 'react-router-dom'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFinancialAccounts } from '../../hooks/useFinancialAccounts'
 import { useTransactions } from '../../hooks/useTransactions'
 import { parseCibcCsv } from '../../lib/parseCibcCsv'
@@ -307,6 +307,21 @@ export default function FinanceTransactions() {
     setSelectedIds((prev) => new Set([...prev, ...filteredTransactions.map((t) => t.id)]))
   }
 
+  const clearSelection = () => {
+    setSelectedIds(new Set())
+    setLastSelectedIndex(null)
+  }
+
+  // Escape deselects all, same as Clear selection — Finder/Gmail-style.
+  useEffect(() => {
+    if (selectedIds.size === 0) return
+    const handleKey = (e) => {
+      if (e.key === 'Escape') clearSelection()
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [selectedIds.size])
+
   const handleBulkApply = async (bulkCategory) => {
     setBulkApplying(true)
     try {
@@ -373,10 +388,7 @@ export default function FinanceTransactions() {
           visibleCount={filteredTransactions.length}
           onSelectAllVisible={selectAllVisible}
           onApply={handleBulkApply}
-          onClear={() => {
-            setSelectedIds(new Set())
-            setLastSelectedIndex(null)
-          }}
+          onClear={clearSelection}
           applying={bulkApplying}
         />
       )}
