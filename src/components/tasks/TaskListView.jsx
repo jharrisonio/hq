@@ -5,7 +5,7 @@ import { useToast } from '../ui/Toast'
 
 function SectionHeader({ children }) {
   return (
-    <div className="px-6 pt-4 pb-1.5 text-[9px] font-semibold uppercase tracking-widest text-gray-300 sticky top-0 bg-white z-[1] border-b border-gray-50">
+    <div className="px-4 md:px-6 pt-4 pb-1.5 text-[9px] font-semibold uppercase tracking-widest text-gray-300 sticky top-0 bg-white z-[1] border-b border-gray-50">
       {children}
     </div>
   )
@@ -89,7 +89,7 @@ export default function TaskListView({
 
   return (
     <div className="flex flex-1 overflow-hidden">
-      <div className="flex-1 overflow-y-auto min-w-0">
+      <div className={`flex-1 overflow-y-auto min-w-0 ${selectedTask ? 'hidden md:block' : ''}`}>
         {sections.map(
           (section) =>
             section.tasks.length > 0 && (

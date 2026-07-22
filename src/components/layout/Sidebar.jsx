@@ -16,7 +16,7 @@ function SectionLabel({ children }) {
 
 export default function Sidebar({ projects, user, onSignOut }) {
   return (
-    <div className="w-[240px] shrink-0 border-r border-gray-100 flex flex-col h-full bg-white">
+    <div className="hidden md:flex w-[240px] shrink-0 border-r border-gray-100 flex-col h-full bg-white">
       <div className="px-2.5 pt-5 pb-3">
         <div className="px-2.5 text-[13px] font-semibold tracking-wide">HQ</div>
       </div>

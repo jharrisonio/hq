@@ -41,7 +41,7 @@ export default function TransactionDetailPanel({ transaction, allTransactions, o
   const shownSimilar = similar.slice(0, SIMILAR_TRANSACTIONS_LIMIT)
 
   return (
-    <div className="w-[360px] border-l border-gray-100 overflow-y-auto overflow-x-hidden shrink-0 bg-white flex flex-col">
+    <div className="w-full md:w-[360px] md:border-l border-gray-100 overflow-y-auto overflow-x-hidden shrink-0 bg-white flex flex-col">
       <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-3.5 border-b border-gray-200 sticky top-0 bg-white z-10">
         <div className="text-[14px] font-medium leading-snug flex-1 min-w-0 break-words">
           {transaction.merchant || transaction.description}

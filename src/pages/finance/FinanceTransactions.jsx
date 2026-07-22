@@ -29,7 +29,7 @@ function TransactionRow({ t, index, isActive, isSelected, onSelect, onToggleSele
   return (
     <div
       onClick={handleClick}
-      className={`flex items-center gap-3 h-9 px-6 cursor-pointer select-none border-b border-gray-50 border-l-2 transition-colors hover:bg-gray-50 last:border-b-0 ${
+      className={`flex items-center gap-3 h-9 px-4 md:px-6 cursor-pointer select-none border-b border-gray-50 border-l-2 transition-colors hover:bg-gray-50 last:border-b-0 ${
         isActive ? 'border-l-black bg-gray-50' : 'border-l-transparent'
       }`}
     >
@@ -52,15 +52,15 @@ function TransactionRow({ t, index, isActive, isSelected, onSelect, onToggleSele
       <div className="flex-1 min-w-0 flex items-baseline gap-2">
         <span className="text-[12.5px] text-gray-700 truncate min-w-0">{t.merchant || t.description}</span>
         {t.merchant && t.merchant !== t.description && (
-          <span className="text-[10.5px] text-gray-400 truncate shrink-0 max-w-[160px]">{t.description}</span>
+          <span className="hidden md:block text-[10.5px] text-gray-400 truncate shrink-0 max-w-[160px]">{t.description}</span>
         )}
       </div>
       {t.status === 'pending' ? (
-        <div className="text-[9px] font-medium uppercase tracking-wider text-gray-300 border border-gray-200 px-1.5 py-0.5 rounded-sm shrink-0">
+        <div className="hidden md:block text-[9px] font-medium uppercase tracking-wider text-gray-300 border border-gray-200 px-1.5 py-0.5 rounded-sm shrink-0">
           Pending
         </div>
       ) : (
-        t.category && <div className="text-[10px] text-gray-400 shrink-0 max-w-[120px] truncate">{t.category}</div>
+        t.category && <div className="hidden md:block text-[10px] text-gray-400 shrink-0 max-w-[120px] truncate">{t.category}</div>
       )}
       <div
         className={`w-[80px] shrink-0 text-[12.5px] text-right tabular-nums ${isCredit ? 'text-gray-400' : 'text-black'}`}
@@ -162,24 +162,24 @@ function BulkActionBar({ count, visibleCount, onSelectAllVisible, onApply, onCle
   }
 
   return (
-    <div className="flex items-center gap-3 h-11 px-6 border-b border-gray-100 bg-gray-50 shrink-0">
-      <span className="text-[12px] font-medium text-black tabular-nums">{count} selected</span>
+    <div className="flex items-center gap-3 h-11 px-6 border-b border-gray-100 bg-gray-50 shrink-0 overflow-x-auto">
+      <span className="text-[12px] font-medium text-black tabular-nums shrink-0">{count} selected</span>
       {count < visibleCount && (
         <button
           onClick={onSelectAllVisible}
-          className="text-[11px] text-gray-400 hover:text-black underline underline-offset-2"
+          className="text-[11px] text-gray-400 hover:text-black underline underline-offset-2 shrink-0"
         >
           Select all {visibleCount}
         </button>
       )}
 
-      <div className="w-px h-4 bg-gray-200" />
+      <div className="w-px h-4 bg-gray-200 shrink-0" />
 
-      <span className="text-[11px] text-gray-400">Set category</span>
+      <span className="text-[11px] text-gray-400 shrink-0">Set category</span>
       <select
         value={bulkCategory}
         onChange={(e) => setBulkCategory(e.target.value)}
-        className="text-[12px] border border-gray-200 rounded-sm px-2 py-1 bg-white"
+        className="text-[12px] border border-gray-200 rounded-sm px-2 py-1 bg-white shrink-0"
       >
         <option value="">Choose…</option>
         {FINANCE_CATEGORIES.map((c) => (
@@ -188,11 +188,11 @@ function BulkActionBar({ count, visibleCount, onSelectAllVisible, onApply, onCle
           </option>
         ))}
       </select>
-      <Button variant="primary" onClick={handleApply} disabled={!bulkCategory || applying} className="text-[12px] py-1">
+      <Button variant="primary" onClick={handleApply} disabled={!bulkCategory || applying} className="text-[12px] py-1 shrink-0">
         {applying ? 'Applying…' : 'Apply'}
       </Button>
 
-      <button onClick={onClear} className="ml-auto text-[11px] text-gray-400 hover:text-black">
+      <button onClick={onClear} className="ml-auto pl-2 text-[11px] text-gray-400 hover:text-black shrink-0">
         Clear selection
       </button>
     </div>
@@ -350,29 +350,35 @@ export default function FinanceTransactions() {
         }
       />
 
-      <div className="flex items-center gap-2 px-6 py-2.5 border-b border-gray-100 shrink-0">
+      <div className="flex items-center gap-2 px-6 py-2.5 border-b border-gray-100 shrink-0 overflow-x-auto">
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search transactions…"
-          className="w-[180px] text-[12px] border border-gray-200 rounded-sm px-2.5 py-1"
+          className="w-[180px] text-[12px] border border-gray-200 rounded-sm px-2.5 py-1 shrink-0"
         />
-        <PeriodFilter transactions={transactions} period={period} onChange={setPeriod} />
-        <CategoryFilter transactions={transactions} value={category} onChange={setCategory} />
-        <AmountFilter
-          min={minAmount}
-          max={maxAmount}
-          onChange={(mn, mx) => {
-            setMinAmount(mn)
-            setMaxAmount(mx)
-          }}
-        />
+        <div className="shrink-0">
+          <PeriodFilter transactions={transactions} period={period} onChange={setPeriod} />
+        </div>
+        <div className="shrink-0">
+          <CategoryFilter transactions={transactions} value={category} onChange={setCategory} />
+        </div>
+        <div className="shrink-0">
+          <AmountFilter
+            min={minAmount}
+            max={maxAmount}
+            onChange={(mn, mx) => {
+              setMinAmount(mn)
+              setMaxAmount(mx)
+            }}
+          />
+        </div>
         {hasActiveFilters && (
-          <button onClick={clearFilters} className="text-[11px] text-gray-400 hover:text-black">
+          <button onClick={clearFilters} className="text-[11px] text-gray-400 hover:text-black shrink-0">
             Clear filters
           </button>
         )}
-        <div className="ml-auto text-[12px] text-gray-500 tabular-nums shrink-0">
+        <div className="ml-auto pl-2 text-[12px] text-gray-500 tabular-nums shrink-0">
           {filteredTransactions.length} transaction{filteredTransactions.length === 1 ? '' : 's'} ·{' '}
           <span className={filteredTotal < 0 ? 'text-gray-500' : 'text-black font-medium'}>
             {filteredTotal < 0 ? '−' : ''}
@@ -393,7 +399,7 @@ export default function FinanceTransactions() {
       )}
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex-1 overflow-y-auto min-w-0">
+        <div className={`flex-1 overflow-y-auto min-w-0 ${selectedTransaction ? 'hidden md:block' : ''}`}>
           {transactions.length === 0 ? (
             <div className="px-6 py-10 text-[13px] text-gray-300">
               No transactions yet. Import a CIBC credit card CSV export to get started.

@@ -378,7 +378,7 @@ export default function SettingsPage() {
     <div className="h-full flex flex-col">
       <PageHeader title="Settings" />
 
-      <div className="flex-1 overflow-y-auto px-8 py-8">
+      <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
         {loading ? null : (
           <>
             <div className="max-w-md border border-gray-100 rounded-sm p-5 flex flex-col gap-3">

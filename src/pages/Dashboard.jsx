@@ -28,7 +28,7 @@ export default function Dashboard() {
   return (
     <div className="h-full flex flex-col">
       <PageHeader title="Dashboard" />
-      <div className="flex-1 overflow-y-auto px-8 py-8">
+      <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-2xl">
           {projects.map((p) => (
             <Card key={p.id} name={p.name} to={PROJECT_ROUTES[p.slug] || `/${p.slug}`} />

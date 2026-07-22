@@ -22,7 +22,7 @@ export default function TaskRow({ task, isChild, isActive, isExpanded, onSelect,
     <div
       onClick={() => onSelect(task.id)}
       className={`flex items-center gap-2.5 py-2 cursor-pointer border-b border-gray-100 border-l-2 min-h-[40px] transition-colors hover:bg-gray-50 ${
-        isChild ? 'pl-11 pr-6' : 'px-6'
+        isChild ? 'pl-11 pr-4 md:pr-6' : 'px-4 md:px-6'
       } ${isActive ? 'border-l-black' : 'border-l-transparent'}`}
     >
       {hasChildren ? (
