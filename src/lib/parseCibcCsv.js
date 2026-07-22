@@ -1,8 +1,7 @@
 // CIBC's CSV export has no header row: Date, Description, Debit, Credit,
-// masked card number. Debit = a charge (spend); Credit = a payment or
-// refund. Stored as one signed `amount`: positive = charge, negative =
-// payment/credit, so summing amounts (excluding the Payment category)
-// gives net spend directly.
+// masked card number. Debit = a charge (spend); Credit = a statement
+// payment or refund — only debits are tracked, so credit-only rows are
+// skipped entirely rather than imported as negative amounts.
 
 function parseCsvRows(text) {
   const rows = []
@@ -51,16 +50,14 @@ export function parseCibcCsv(text) {
 
   for (const fields of rows) {
     if (fields.length < 4) continue
-    const [dateStr, description, debitStr, creditStr] = fields
+    const [dateStr, description, debitStr] = fields
     const debit = parseFloat(debitStr)
-    const credit = parseFloat(creditStr)
-    const amount = !Number.isNaN(debit) ? debit : !Number.isNaN(credit) ? -credit : null
-    if (amount === null || !dateStr.trim() || !description.trim()) continue
+    if (Number.isNaN(debit) || !dateStr.trim() || !description.trim()) continue
 
     transactions.push({
       txn_date: dateStr.trim(),
       description: description.trim(),
-      amount,
+      amount: debit,
       raw_row: fields,
     })
   }

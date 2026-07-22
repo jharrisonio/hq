@@ -178,7 +178,14 @@ export default function FinanceTransactions() {
     return rows
   }, [transactions, period, category, minAmount, maxAmount, search])
 
-  const filteredTotal = filteredTransactions.reduce((sum, t) => sum + t.amount, 0)
+  // Statement payments are large negative amounts that would otherwise net
+  // against spend and make the total meaningless — excluded here to match
+  // the "sum(amount) excluding Payment" net-spend convention used
+  // elsewhere, unless the user has filtered down to Payment rows
+  // specifically, in which case excluding them would just zero it out.
+  const totalTransactions =
+    category === 'Payment' ? filteredTransactions : filteredTransactions.filter((t) => t.category !== 'Payment')
+  const filteredTotal = totalTransactions.reduce((sum, t) => sum + t.amount, 0)
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0]

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { computeSpendTrend } from '../../lib/spendTrend'
+import { computeSpendTrend, OUTLIER_THRESHOLD } from '../../lib/spendTrend'
 import { currency } from '../../lib/currency'
 
 const GRANULARITIES = [
@@ -21,6 +21,11 @@ function niceMax(max) {
   return 10 * magnitude
 }
 
+function barHeightPct(value, max) {
+  if (value <= 0) return 0
+  return Math.max((value / max) * 100, 2)
+}
+
 function bucketLabel(bucket, granularity) {
   if (granularity === 'day') return bucket.start.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })
   if (granularity === 'week') {
@@ -29,6 +34,10 @@ function bucketLabel(bucket, granularity) {
     return `${from} – ${to}`
   }
   return bucket.start.toLocaleDateString('en-CA', { month: 'long', year: 'numeric' })
+}
+
+function Swatch({ className }) {
+  return <span className={`inline-block w-2 h-2 rounded-sm mr-1 align-middle ${className}`} />
 }
 
 export default function SpendTrendChart({ transactions, period }) {
@@ -64,13 +73,29 @@ export default function SpendTrendChart({ transactions, period }) {
         <div className="text-[12px] text-gray-300 py-6">No spend in this period.</div>
       ) : (
         <div className="relative">
-          {hovered && (
-            <div className="mb-1.5 text-[11px]">
-              <span className="font-medium text-black tabular-nums">{currency.format(hovered.average)}/day</span>
-              <span className="text-gray-400"> — {bucketLabel(hovered, granularity)}</span>
-            </div>
-          )}
-          {!hovered && <div className="mb-1.5 text-[11px] text-gray-300">Hover a bar for details</div>}
+          <div className="mb-1.5 text-[11px] flex items-center gap-4">
+            <span className="text-gray-500">
+              <Swatch className="bg-gray-200" />
+              All{hovered && (
+                <span className="text-black font-medium tabular-nums"> {currency.format(hovered.average)}/day</span>
+              )}
+            </span>
+            <span className="text-gray-500">
+              <Swatch className="bg-gray-700" />
+              Excl. outliers (&gt;{currency.format(OUTLIER_THRESHOLD)})
+              {hovered && (
+                <span className="text-black font-medium tabular-nums">
+                  {' '}
+                  {currency.format(hovered.adjustedAverage)}/day
+                </span>
+              )}
+            </span>
+            {hovered ? (
+              <span className="text-gray-400">— {bucketLabel(hovered, granularity)}</span>
+            ) : (
+              <span className="text-gray-300">— hover a bar for details</span>
+            )}
+          </div>
 
           <div className="relative" style={{ height: CHART_HEIGHT }}>
             <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
@@ -93,13 +118,19 @@ export default function SpendTrendChart({ transactions, period }) {
                   key={b.key}
                   onMouseEnter={() => setHoveredKey(b.key)}
                   onMouseLeave={() => setHoveredKey((k) => (k === b.key ? null : k))}
-                  className="flex-1 min-w-[3px] max-w-[24px] h-full flex items-end cursor-pointer"
+                  className="flex-1 min-w-[3px] max-w-[24px] h-full relative cursor-pointer"
                 >
                   <div
-                    className={`w-full rounded-t-[4px] transition-colors ${
+                    className={`absolute bottom-0 left-0 w-full rounded-t-[4px] transition-colors ${
+                      hoveredKey === b.key ? 'bg-gray-300' : 'bg-gray-200'
+                    }`}
+                    style={{ height: `${barHeightPct(b.average, max)}%` }}
+                  />
+                  <div
+                    className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-[60%] rounded-t-[3px] transition-colors ${
                       hoveredKey === b.key ? 'bg-black' : 'bg-gray-700'
                     }`}
-                    style={{ height: `${Math.max((b.average / max) * 100, 2)}%` }}
+                    style={{ height: `${barHeightPct(b.adjustedAverage, max)}%` }}
                   />
                 </div>
               ))}

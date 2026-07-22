@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../components/ui/Toast'
 
+const PAGE_SIZE = 1000
+
 export function useTransactions(userId) {
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
@@ -12,13 +14,25 @@ export function useTransactions(userId) {
     if (!userId) return
     if (!loadedOnce.current) setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', userId)
-        .order('txn_date', { ascending: false })
-      if (error) throw error
-      setTransactions(data)
+      // Supabase/PostgREST caps a single select at 1000 rows — page through
+      // until a page comes back short, so the count keeps growing correctly
+      // past that as more statements get imported.
+      let all = []
+      let from = 0
+      while (true) {
+        const { data, error } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('user_id', userId)
+          .order('txn_date', { ascending: false })
+          .order('id', { ascending: false })
+          .range(from, from + PAGE_SIZE - 1)
+        if (error) throw error
+        all = all.concat(data)
+        if (data.length < PAGE_SIZE) break
+        from += PAGE_SIZE
+      }
+      setTransactions(all)
     } catch (e) {
       showError(e.message)
     } finally {

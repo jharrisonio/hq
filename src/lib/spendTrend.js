@@ -2,6 +2,11 @@
 // per bucket (not total spend) — so a month bar is comparable to a day bar
 // instead of just being bigger because it spans more days.
 
+// Any single transaction over this is treated as a one-off (a holiday, a
+// big purchase) rather than routine daily spend, and excluded from the
+// "adjusted" average alongside the unfiltered "all" average.
+export const OUTLIER_THRESHOLD = 300
+
 function dateOnly(d) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate())
 }
@@ -67,14 +72,25 @@ export function computeSpendTrend(transactions, period, granularity) {
     }
     const clippedStart = bucketStart < periodStart ? periodStart : bucketStart
     const clippedEnd = bucketEnd > periodEnd ? periodEnd : bucketEnd
-    if (!buckets.has(key)) buckets.set(key, { total: 0, start: clippedStart, end: clippedEnd })
-    buckets.get(key).total += t.amount
+    if (!buckets.has(key)) buckets.set(key, { total: 0, adjustedTotal: 0, start: clippedStart, end: clippedEnd })
+    const bucket = buckets.get(key)
+    bucket.total += t.amount
+    if (t.amount <= OUTLIER_THRESHOLD) bucket.adjustedTotal += t.amount
   })
 
   return Array.from(buckets.entries())
     .map(([key, b]) => {
       const days = Math.max(daysBetweenInclusive(b.start, b.end), 1)
-      return { key, start: b.start, end: b.end, total: b.total, days, average: b.total / days }
+      return {
+        key,
+        start: b.start,
+        end: b.end,
+        total: b.total,
+        adjustedTotal: b.adjustedTotal,
+        days,
+        average: b.total / days,
+        adjustedAverage: b.adjustedTotal / days,
+      }
     })
     .sort((a, b) => a.start - b.start)
 }
