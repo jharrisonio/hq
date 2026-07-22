@@ -1,4 +1,5 @@
 import { Link, useOutletContext } from 'react-router-dom'
+import PageHeader from '../components/layout/PageHeader'
 
 const PROJECT_ROUTES = {
   'canada-pr': '/pr',
@@ -26,9 +27,7 @@ export default function Dashboard() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between px-6 py-3.5 border-b border-gray-100 shrink-0">
-        <div className="text-[11px] font-medium uppercase tracking-widest text-black">Dashboard</div>
-      </div>
+      <PageHeader title="Dashboard" />
       <div className="flex-1 overflow-y-auto px-8 py-8">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-2xl">
           {projects.map((p) => (

@@ -8,7 +8,7 @@ const tabClass = ({ isActive }) =>
 export default function FinanceHeader({ right }) {
   return (
     <div className="shrink-0 border-b border-gray-100">
-      <div className="flex items-center justify-between px-6 py-3.5">
+      <div className="flex items-center justify-between h-[52px] px-6">
         <div className="text-[11px] font-medium uppercase tracking-widest text-black">Finance</div>
         {right}
       </div>

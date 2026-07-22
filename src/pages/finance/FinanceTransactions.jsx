@@ -339,9 +339,13 @@ export default function FinanceTransactions() {
         right={
           <div>
             <input ref={fileInputRef} type="file" accept=".csv" onChange={handleFileChange} className="hidden" />
-            <Button variant="secondary" onClick={() => fileInputRef.current?.click()} disabled={importing}>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={importing}
+              className="text-[11px] text-gray-500 hover:text-black hover:border-gray-400 border border-gray-200 rounded-sm px-2 py-1 disabled:opacity-50"
+            >
               {importing ? 'Importing…' : 'Import CIBC CSV'}
-            </Button>
+            </button>
           </div>
         }
       />

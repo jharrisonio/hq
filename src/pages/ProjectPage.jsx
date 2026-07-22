@@ -1,6 +1,7 @@
 import { useOutletContext } from 'react-router-dom'
 import { useTasks } from '../hooks/useTasks'
 import TaskListView from '../components/tasks/TaskListView'
+import PageHeader from '../components/layout/PageHeader'
 
 function Countdown({ dueDate }) {
   if (!dueDate) return null
@@ -33,10 +34,7 @@ export default function ProjectPage({ slug }) {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between px-6 py-3.5 border-b border-gray-100 shrink-0">
-        <div className="text-[11px] font-medium uppercase tracking-widest text-black">{project.name}</div>
-        {submission && <Countdown dueDate={submission.dueDate} />}
-      </div>
+      <PageHeader title={project.name} right={submission && <Countdown dueDate={submission.dueDate} />} />
 
       {loading ? null : (
         <TaskListView sections={sections} getTask={getTask} onUpdateStatus={updateStatus} onUpdateDueDate={updateDueDate} />

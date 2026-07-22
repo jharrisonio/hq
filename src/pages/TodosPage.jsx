@@ -15,6 +15,7 @@ import Modal from '../components/ui/Modal'
 import { PlusIcon, FilterIcon } from '../components/ui/icons'
 import TaskListView from '../components/tasks/TaskListView'
 import Button from '../components/ui/Button'
+import PageHeader from '../components/layout/PageHeader'
 
 function draftGmailUrl(draft) {
   if (!draft.thread_id) return null
@@ -611,47 +612,49 @@ export default function TodosPage() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between px-6 py-3.5 border-b border-gray-100 shrink-0">
-        <div className="text-[11px] font-medium uppercase tracking-widest text-black">Todos</div>
-        <div className="flex items-center gap-2">
-          <Popover
-            trigger={(toggle) => (
-              <button
-                onClick={toggle}
-                className="flex items-center gap-1.5 text-[11px] text-gray-500 hover:text-black hover:border-gray-400 border border-gray-200 rounded-sm px-2 py-1"
-              >
-                <FilterIcon />
-                {COMPLETED_FILTER_OPTIONS.find((o) => o.value === completedFilter)?.shortLabel}
-              </button>
-            )}
-          >
-            {(close) => (
-              <div className="flex flex-col">
-                {COMPLETED_FILTER_OPTIONS.map((o) => (
-                  <button
-                    key={o.value}
-                    onClick={() => {
-                      handleCompletedFilterChange(o.value)
-                      close()
-                    }}
-                    className={`text-left text-[12px] px-3 py-1.5 hover:bg-gray-50 ${
-                      o.value === completedFilter ? 'text-black font-medium' : 'text-gray-600'
-                    }`}
-                  >
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </Popover>
-          <button
-            onClick={() => setAddModalOpen(true)}
-            className="flex items-center justify-center w-[26px] h-[26px] border border-gray-200 rounded-sm text-gray-500 hover:text-black hover:border-gray-400"
-          >
-            <PlusIcon />
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Todos"
+        right={
+          <div className="flex items-center gap-2">
+            <Popover
+              trigger={(toggle) => (
+                <button
+                  onClick={toggle}
+                  className="flex items-center gap-1.5 text-[11px] text-gray-500 hover:text-black hover:border-gray-400 border border-gray-200 rounded-sm px-2 py-1"
+                >
+                  <FilterIcon />
+                  {COMPLETED_FILTER_OPTIONS.find((o) => o.value === completedFilter)?.shortLabel}
+                </button>
+              )}
+            >
+              {(close) => (
+                <div className="flex flex-col">
+                  {COMPLETED_FILTER_OPTIONS.map((o) => (
+                    <button
+                      key={o.value}
+                      onClick={() => {
+                        handleCompletedFilterChange(o.value)
+                        close()
+                      }}
+                      className={`text-left text-[12px] px-3 py-1.5 hover:bg-gray-50 ${
+                        o.value === completedFilter ? 'text-black font-medium' : 'text-gray-600'
+                      }`}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </Popover>
+            <button
+              onClick={() => setAddModalOpen(true)}
+              className="flex items-center justify-center w-[26px] h-[26px] border border-gray-200 rounded-sm text-gray-500 hover:text-black hover:border-gray-400"
+            >
+              <PlusIcon />
+            </button>
+          </div>
+        }
+      />
 
       <Modal open={addModalOpen} onClose={() => setAddModalOpen(false)}>
         <form onSubmit={submit} className="flex flex-col gap-3">

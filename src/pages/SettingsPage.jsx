@@ -8,6 +8,7 @@ import { useFinanceSettings } from '../hooks/useFinanceSettings'
 import { startGmailConnect } from '../lib/gmailAuth'
 import { useToast } from '../components/ui/Toast'
 import Button from '../components/ui/Button'
+import PageHeader from '../components/layout/PageHeader'
 
 function formatDateTime(iso) {
   if (!iso) return ''
@@ -375,9 +376,7 @@ export default function SettingsPage() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between px-6 py-3.5 border-b border-gray-100 shrink-0">
-        <div className="text-[11px] font-medium uppercase tracking-widest text-black">Settings</div>
-      </div>
+      <PageHeader title="Settings" />
 
       <div className="flex-1 overflow-y-auto px-8 py-8">
         {loading ? null : (

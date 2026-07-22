@@ -3,6 +3,7 @@ import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useContacts } from '../../hooks/useContacts'
 import { useToast } from '../../components/ui/Toast'
 import Button from '../../components/ui/Button'
+import PageHeader from '../../components/layout/PageHeader'
 
 export default function ContactDetail() {
   const { user } = useOutletContext()
@@ -37,11 +38,13 @@ export default function ContactDetail() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center px-6 py-3.5 border-b border-gray-100 shrink-0">
-        <button onClick={() => navigate('/crm')} className="text-[11px] text-gray-400 hover:text-black">
-          ← Back to CRM
-        </button>
-      </div>
+      <PageHeader
+        left={
+          <button onClick={() => navigate('/crm')} className="text-[11px] text-gray-400 hover:text-black">
+            ← Back to CRM
+          </button>
+        }
+      />
 
       <div className="flex-1 overflow-y-auto px-8 py-8 max-w-md">
         {loading ? null : !contact ? (
