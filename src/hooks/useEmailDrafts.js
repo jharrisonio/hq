@@ -73,5 +73,17 @@ export function useEmailDrafts(userId) {
     await load()
   }
 
-  return { draftsByTaskId, loading, approveAndSend, reject, refresh: load }
+  // Lets the user override the suggested "reply" action when they'd rather
+  // just archive the email — same Gmail action and task-done bookkeeping as
+  // an archive candidate, just reusing this table's row instead.
+  const archiveInstead = async (emailDraftId) => {
+    const { data, error } = await supabase.functions.invoke('archive-email', {
+      body: { email_draft_id: emailDraftId },
+    })
+    if (error) throw new Error(data?.error || (await extractFunctionError(error)))
+    if (data?.error) throw new Error(data.error)
+    await load()
+  }
+
+  return { draftsByTaskId, loading, approveAndSend, reject, archiveInstead, refresh: load }
 }

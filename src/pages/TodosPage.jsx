@@ -31,7 +31,7 @@ const COMPLETED_FILTER_OPTIONS = [
 ]
 const COMPLETED_FILTER_WINDOW_MS = { day: 24 * 60 * 60 * 1000, week: 7 * 24 * 60 * 60 * 1000 }
 
-const DRAFT_STATUS_BADGES = { sent: 'Sent', rejected: 'Not needed', failed: 'Reply failed' }
+const DRAFT_STATUS_BADGES = { sent: 'Sent', rejected: 'Not needed', archived: 'Archived', failed: 'Reply failed' }
 const SUBSCRIPTION_STATUS_BADGES = { unsubscribed: 'Unsubscribed', dismissed: 'Kept', failed: 'Failed' }
 const CANDIDATE_STATUS_BADGES = { archived: 'Archived', ignored: 'Ignored', failed: 'Failed' }
 
@@ -57,10 +57,11 @@ function formatEmailDate(dateHeader) {
   return Number.isNaN(d.getTime()) ? dateHeader : d.toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-function EmailDraftDetail({ draft, onApproveAndSend, onReject, onDontFlagAgain }) {
+function EmailDraftDetail({ draft, onApproveAndSend, onReject, onArchiveInstead, onDontFlagAgain }) {
   const { showSuccess, showError } = useToast()
   const [sending, setSending] = useState(false)
   const [rejecting, setRejecting] = useState(false)
+  const [archiving, setArchiving] = useState(false)
   const [ruleAdded, setRuleAdded] = useState(false)
   const [liveBody, setLiveBody] = useState(null)
   const [original, setOriginal] = useState(null)
@@ -131,6 +132,18 @@ function EmailDraftDetail({ draft, onApproveAndSend, onReject, onDontFlagAgain }
     }
   }
 
+  const handleArchiveInstead = async () => {
+    setArchiving(true)
+    try {
+      await onArchiveInstead(draft.id)
+      showSuccess('Archived')
+    } catch (err) {
+      showError(err.message)
+    } finally {
+      setArchiving(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {original && (
@@ -190,18 +203,54 @@ function EmailDraftDetail({ draft, onApproveAndSend, onReject, onDontFlagAgain }
         <span className="text-[10px] font-medium uppercase tracking-wider text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded-sm self-start">
           Not needed
         </span>
+      ) : draft.status === 'archived' ? (
+        <span className="text-[10px] font-medium uppercase tracking-wider text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded-sm self-start">
+          Archived
+        </span>
       ) : (
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={handleSend} disabled={sending || rejecting} className="text-[12px]">
+        <div className="flex items-stretch self-start">
+          <Button
+            variant="secondary"
+            onClick={handleSend}
+            disabled={sending || rejecting || archiving}
+            className="text-[12px] rounded-r-none border-r-0"
+          >
             {sending ? 'Sending…' : draft.status === 'failed' ? 'Retry send' : 'Approve & Send'}
           </Button>
-          <button
-            onClick={handleReject}
-            disabled={sending || rejecting}
-            className="text-[11px] text-gray-400 hover:text-black"
+          <Popover
+            trigger={(toggle) => (
+              <button
+                onClick={toggle}
+                disabled={sending || rejecting || archiving}
+                className="h-full flex items-center justify-center px-1.5 text-gray-500 border border-gray-300 rounded-sm rounded-l-none hover:border-gray-400 hover:text-black disabled:opacity-50"
+              >
+                ▾
+              </button>
+            )}
           >
-            Not needed
-          </button>
+            {(close) => (
+              <div className="flex flex-col">
+                <button
+                  onClick={() => {
+                    close()
+                    handleArchiveInstead()
+                  }}
+                  className="text-left text-[12px] px-3 py-1.5 hover:bg-gray-50 text-gray-600 whitespace-nowrap"
+                >
+                  Archive instead
+                </button>
+                <button
+                  onClick={() => {
+                    close()
+                    handleReject()
+                  }}
+                  className="text-left text-[12px] px-3 py-1.5 hover:bg-gray-50 text-gray-600 whitespace-nowrap"
+                >
+                  Not needed
+                </button>
+              </div>
+            )}
+          </Popover>
         </div>
       )}
 
@@ -455,7 +504,7 @@ export default function TodosPage() {
     deleteTask,
     refresh: refreshTasks,
   } = useTasks(user?.id, null)
-  const { draftsByTaskId, loading: draftsLoading, approveAndSend, reject } = useEmailDrafts(user?.id)
+  const { draftsByTaskId, loading: draftsLoading, approveAndSend, reject, archiveInstead } = useEmailDrafts(user?.id)
   const {
     subscriptionsByTaskId,
     loading: subscriptionsLoading,
@@ -492,6 +541,11 @@ export default function TodosPage() {
 
   const handleReject = async (draft) => {
     await reject(draft)
+    refreshTasks()
+  }
+
+  const handleArchiveInstead = async (draftId) => {
+    await archiveInstead(draftId)
     refreshTasks()
   }
 
@@ -552,6 +606,7 @@ export default function TodosPage() {
               draft={draft}
               onApproveAndSend={handleApproveAndSend}
               onReject={handleReject}
+              onArchiveInstead={handleArchiveInstead}
               onDontFlagAgain={dontFlagAgain}
             />
           ),

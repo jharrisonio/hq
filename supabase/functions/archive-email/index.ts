@@ -54,18 +54,23 @@ Deno.serve(async (req: Request) => {
     }
     const userId = userData.user.id
 
-    const { email_archive_candidate_id } = await req.json()
-    if (!email_archive_candidate_id) {
-      return json({ error: "Missing email_archive_candidate_id" }, 400)
+    // Either a suggested archive candidate, or a reply-draft todo the user
+    // decided to archive instead of sending — same underlying Gmail action
+    // and "mark done" bookkeeping, just a different source table.
+    const { email_archive_candidate_id, email_draft_id } = await req.json()
+    if (!email_archive_candidate_id && !email_draft_id) {
+      return json({ error: "Missing email_archive_candidate_id or email_draft_id" }, 400)
     }
+    const table = email_archive_candidate_id ? "email_archive_candidates" : "email_drafts"
+    const rowId = email_archive_candidate_id || email_draft_id
 
     const { data: candidate, error: candidateError } = await userClient
-      .from("email_archive_candidates")
+      .from(table)
       .select("gmail_message_id, task_id")
-      .eq("id", email_archive_candidate_id)
+      .eq("id", rowId)
       .single()
     if (candidateError || !candidate) {
-      return json({ error: "Archive candidate not found" }, 404)
+      return json({ error: "Email not found" }, 404)
     }
     if (!candidate.gmail_message_id) {
       return json({ error: "Missing Gmail message id" }, 400)
@@ -103,17 +108,11 @@ Deno.serve(async (req: Request) => {
 
     if (!modifyRes.ok) {
       const errorMsg = modifyJson.error?.message || "Archive request failed"
-      await userClient
-        .from("email_archive_candidates")
-        .update({ status: "failed", error: errorMsg })
-        .eq("id", email_archive_candidate_id)
+      await userClient.from(table).update({ status: "failed", error: errorMsg }).eq("id", rowId)
       return json({ error: errorMsg }, 500)
     }
 
-    await userClient
-      .from("email_archive_candidates")
-      .update({ status: "archived", error: null })
-      .eq("id", email_archive_candidate_id)
+    await userClient.from(table).update({ status: "archived", error: null }).eq("id", rowId)
     if (candidate.task_id) {
       await userClient
         .from("tasks")
