@@ -606,9 +606,8 @@ export default function TodosPage() {
     return null
   }
 
-  if (loading || draftsLoading || subscriptionsLoading || candidatesLoading || recommendationsLoading) return null
-
-  const visibleTasks = tasks.filter((t) => isTaskVisible(t, completedFilter))
+  const anyLoading = loading || draftsLoading || subscriptionsLoading || candidatesLoading || recommendationsLoading
+  const visibleTasks = anyLoading ? [] : tasks.filter((t) => isTaskVisible(t, completedFilter))
 
   return (
     <div className="h-full flex flex-col">
@@ -686,15 +685,17 @@ export default function TodosPage() {
         </form>
       </Modal>
 
-      <TaskListView
-        sections={[{ label: 'Todos', tasks: visibleTasks, expandable: true }]}
-        getTask={getTask}
-        onUpdateStatus={updateStatus}
-        onUpdateDueDate={updateDueDate}
-        onDeleteTask={deleteTask}
-        getExtraSections={getExtraSections}
-        getRowBadge={getRowBadge}
-      />
+      {anyLoading ? null : (
+        <TaskListView
+          sections={[{ label: 'Todos', tasks: visibleTasks, expandable: true }]}
+          getTask={getTask}
+          onUpdateStatus={updateStatus}
+          onUpdateDueDate={updateDueDate}
+          onDeleteTask={deleteTask}
+          getExtraSections={getExtraSections}
+          getRowBadge={getRowBadge}
+        />
+      )}
     </div>
   )
 }

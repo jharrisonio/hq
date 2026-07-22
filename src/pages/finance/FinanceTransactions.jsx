@@ -1,7 +1,5 @@
 import { useOutletContext } from 'react-router-dom'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useFinancialAccounts } from '../../hooks/useFinancialAccounts'
-import { useTransactions } from '../../hooks/useTransactions'
 import { parseCibcCsv } from '../../lib/parseCibcCsv'
 import { currency } from '../../lib/currency'
 import { filterByPeriod } from '../../lib/periods'
@@ -202,15 +200,7 @@ function BulkActionBar({ count, visibleCount, onSelectAllVisible, onApply, onCle
 }
 
 export default function FinanceTransactions() {
-  const { user } = useOutletContext()
-  const { accounts, loading: accountsLoading } = useFinancialAccounts(user?.id)
-  const {
-    transactions,
-    loading: transactionsLoading,
-    importTransactions,
-    updateTransaction,
-    bulkUpdateCategory,
-  } = useTransactions(user?.id)
+  const { account, transactions, importTransactions, updateTransaction, bulkUpdateCategory } = useOutletContext()
   const { showSuccess, showError } = useToast()
   const [importing, setImporting] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
@@ -224,7 +214,6 @@ export default function FinanceTransactions() {
   const [maxAmount, setMaxAmount] = useState('')
   const fileInputRef = useRef(null)
 
-  const account = accounts[0]
   const selectedTransaction = transactions.find((t) => t.id === selectedId) || null
 
   const hasActiveFilters = search || period !== 'all' || category !== 'all' || minAmount || maxAmount
@@ -343,8 +332,6 @@ export default function FinanceTransactions() {
       setBulkApplying(false)
     }
   }
-
-  if (accountsLoading || transactionsLoading) return null
 
   return (
     <div className="h-full flex flex-col">

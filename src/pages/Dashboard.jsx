@@ -25,15 +25,19 @@ export default function Dashboard() {
   const { projects } = useOutletContext()
 
   return (
-    <div className="h-full overflow-y-auto px-8 py-8">
-      <div className="text-[11px] font-medium uppercase tracking-widest text-black mb-6">Dashboard</div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-2xl">
-        {projects.map((p) => (
-          <Card key={p.id} name={p.name} to={PROJECT_ROUTES[p.slug] || `/${p.slug}`} />
-        ))}
-        {PERSONAL_CARDS.map((c) => (
-          <Card key={c.name} {...c} />
-        ))}
+    <div className="h-full flex flex-col">
+      <div className="flex items-center justify-between px-6 py-3.5 border-b border-gray-100 shrink-0">
+        <div className="text-[11px] font-medium uppercase tracking-widest text-black">Dashboard</div>
+      </div>
+      <div className="flex-1 overflow-y-auto px-8 py-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-2xl">
+          {projects.map((p) => (
+            <Card key={p.id} name={p.name} to={PROJECT_ROUTES[p.slug] || `/${p.slug}`} />
+          ))}
+          {PERSONAL_CARDS.map((c) => (
+            <Card key={c.name} {...c} />
+          ))}
+        </div>
       </div>
     </div>
   )

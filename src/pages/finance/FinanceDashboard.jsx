@@ -1,7 +1,5 @@
 import { useOutletContext } from 'react-router-dom'
 import { useState } from 'react'
-import { useTransactions } from '../../hooks/useTransactions'
-import { useFinanceSettings } from '../../hooks/useFinanceSettings'
 import { currency } from '../../lib/currency'
 import { filterByPeriod } from '../../lib/periods'
 import { useToast } from '../../components/ui/Toast'
@@ -81,14 +79,10 @@ function SubscriptionsList({ transactions, onSelect }) {
 }
 
 export default function FinanceDashboard() {
-  const { user } = useOutletContext()
-  const { transactions, loading, updateTransaction } = useTransactions(user?.id)
-  const { outlierThreshold, loading: settingsLoading } = useFinanceSettings(user?.id)
+  const { transactions, updateTransaction, outlierThreshold } = useOutletContext()
   const { showError } = useToast()
   const [period, setPeriod] = useState('all')
   const [selectedId, setSelectedId] = useState(null)
-
-  if (loading || settingsLoading) return null
 
   const periodTransactions = filterByPeriod(transactions, period)
   const selectedTransaction = transactions.find((t) => t.id === selectedId) || null

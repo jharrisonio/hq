@@ -19,7 +19,7 @@ export default function ProjectPage({ slug }) {
   const project = projects.find((p) => p.slug === slug)
   const { tasks, loading, getTask, updateStatus, updateDueDate } = useTasks(user?.id, project?.id)
 
-  if (loading || !project) return null
+  if (!project) return null
 
   const questions = tasks.filter((t) => t.type === 'question')
   const topLevelTasks = tasks.filter((t) => t.type === 'task' && !t.parentId && !t.isSubmission)
@@ -38,7 +38,9 @@ export default function ProjectPage({ slug }) {
         {submission && <Countdown dueDate={submission.dueDate} />}
       </div>
 
-      <TaskListView sections={sections} getTask={getTask} onUpdateStatus={updateStatus} onUpdateDueDate={updateDueDate} />
+      {loading ? null : (
+        <TaskListView sections={sections} getTask={getTask} onUpdateStatus={updateStatus} onUpdateDueDate={updateDueDate} />
+      )}
     </div>
   )
 }
