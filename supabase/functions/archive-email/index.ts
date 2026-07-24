@@ -64,15 +64,23 @@ Deno.serve(async (req: Request) => {
     const table = email_archive_candidate_id ? "email_archive_candidates" : "email_drafts"
     const rowId = email_archive_candidate_id || email_draft_id
 
+    // email_drafts.gmail_message_id is sometimes just the draft's own
+    // (unsent) reply message rather than the original inbound email — and
+    // occasionally identical to gmail_draft_id, a draft resource id Gmail's
+    // messages.modify rejects with "Invalid id value." source_message_id is
+    // reliably the real original message, and it's what we actually want to
+    // archive anyway (email_archive_candidates has no such column/ambiguity).
+    const selectCols = table === "email_drafts" ? "gmail_message_id, source_message_id, task_id" : "gmail_message_id, task_id"
     const { data: candidate, error: candidateError } = await userClient
       .from(table)
-      .select("gmail_message_id, task_id")
+      .select(selectCols)
       .eq("id", rowId)
       .single()
     if (candidateError || !candidate) {
       return json({ error: "Email not found" }, 404)
     }
-    if (!candidate.gmail_message_id) {
+    const messageId = table === "email_drafts" ? candidate.source_message_id || candidate.gmail_message_id : candidate.gmail_message_id
+    if (!messageId) {
       return json({ error: "Missing Gmail message id" }, 400)
     }
 
@@ -94,7 +102,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const modifyRes = await fetch(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${candidate.gmail_message_id}/modify`,
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/modify`,
       {
         method: "POST",
         headers: {
